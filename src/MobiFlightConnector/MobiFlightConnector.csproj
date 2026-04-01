@@ -206,6 +206,9 @@
     <Reference Include="System.Diagnostics.DiagnosticSource, Version=10.0.0.3, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\..\packages\System.Diagnostics.DiagnosticSource.10.0.3\lib\net462\System.Diagnostics.DiagnosticSource.dll</HintPath>
     </Reference>
+    <Reference Include="System.IO.Ports, Version=10.0.0.5, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\System.IO.Ports.10.0.5\lib\net462\System.IO.Ports.dll</HintPath>
+    </Reference>
     <Reference Include="System.Management" />
     <Reference Include="System.Memory, Version=4.0.5.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51">
       <HintPath>..\..\packages\System.Memory.4.6.3\lib\net462\System.Memory.dll</HintPath>
@@ -2263,11 +2266,11 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CommandMessenger.Transport.Serial\CommandMessenger.Transport.Serial.csproj">
-      <Project>{00d85f0b-00a5-41fa-8a99-428c0199c663}</Project>
+      <Project>{b074fc07-068d-280c-5af9-f367999cbbdc}</Project>
       <Name>CommandMessenger.Transport.Serial</Name>
     </ProjectReference>
     <ProjectReference Include="..\CommandMessenger\CommandMessenger.csproj">
-      <Project>{3cf8f8fc-6f5c-46f8-94dc-c2e4c505eca4}</Project>
+      <Project>{00986b3b-64cf-7993-bce4-14ba5b33f3ed}</Project>
       <Name>CommandMessenger</Name>
     </ProjectReference>
   </ItemGroup>
