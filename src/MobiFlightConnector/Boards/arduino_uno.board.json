@@ -10,11 +10,11 @@
   "Connection": {
     "ConnectionDelay": 1750,
     "DelayAfterFirmwareUpdate": 0,
-    "DtrEnable": true,
+    "DtrEnable": false,
     "EEPROMSize": 286,
     "ExtraConnectionRetry": true,
     "ForceResetOnFirmwareUpdate": false,
-    "MessageSize": 64
+    "MessageSize": 90
   },
   "HardwareIds": [
     "^VID_10C4&PID_EA60",
