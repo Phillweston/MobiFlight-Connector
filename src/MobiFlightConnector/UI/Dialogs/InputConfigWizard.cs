@@ -229,8 +229,20 @@ namespace MobiFlight.UI.Dialogs
                 });
             }
 
+<<<<<<< HEAD:src/MobiFlightConnector/UI/Dialogs/InputConfigWizard.cs
             inputModuleNameComboBox.DataSource = controllerComboBoxItems;
             inputModuleNameComboBox.SelectedIndex = 0;
+=======
+            if (_execManager.GetMQTTManager().GetMqttInputs().Count > 0)
+            {
+                inputModuleNameComboBox.Items.Add(new ListItem()
+                {
+                    Value = $"{MQTTManager.Serial} / {MQTTManager.Serial}",
+                    Label = "MQTT topic"
+                });
+            }
+
+>>>>>>> neil/mqtt-again:UI/Dialogs/InputConfigWizard.cs
             preconditionPanel.SetModules(PreconditionModuleList);
         }
 #endif
@@ -275,8 +287,20 @@ namespace MobiFlight.UI.Dialogs
                 });
             }
 
+<<<<<<< HEAD:src/MobiFlightConnector/UI/Dialogs/InputConfigWizard.cs
             inputModuleNameComboBox.DataSource = controllerComboBoxItems;
             inputModuleNameComboBox.SelectedIndex = 0;
+=======
+            if (_execManager.GetMQTTManager().GetMqttInputs().Count > 0)
+            {
+                inputModuleNameComboBox.Items.Add(new ListItem()
+                {
+                    Value = $"{MQTTManager.Serial} / {MQTTManager.Serial}",
+                    Label = "MQTT topic"
+                });
+            }
+
+>>>>>>> neil/mqtt-again:UI/Dialogs/InputConfigWizard.cs
             preconditionPanel.SetModules(PreconditionModuleList);
         }
 
@@ -508,6 +532,14 @@ namespace MobiFlight.UI.Dialogs
                     foreach (var device in devices)
                     {
                         inputTypeComboBox.Items.Add(new ListItem<IBaseDevice>() { Label = device.Label, Value = device });
+                    }
+                }
+                // Add MQTT inputs
+                else if (MQTTManager.IsMQTTSerial(serial))
+                {
+                    foreach (var input in _execManager.GetMQTTManager().GetMqttInputs())
+                    {
+                        inputTypeComboBox.Items.Add(new ListItem<IBaseDevice>() { Label = input.Value.Label, Value = input.Value});
                     }
                 }
                 else

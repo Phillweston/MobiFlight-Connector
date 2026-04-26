@@ -86,11 +86,18 @@ namespace MobiFlight.UI.Dialogs
            
             // TAB MobiFlight           
             mobiFlightPanel.LoadSettings();
+<<<<<<< HEAD:src/MobiFlightConnector/UI/Dialogs/SettingsDialog.cs
 
             // TAB Joystick & Midi
             peripheralsPanel.LoadSettings();
 
             proSimPanel.LoadSettings();
+=======
+            //
+            // TAB MQTT server
+            //
+            mqttServerSettingsPanel.LoadSettings();
+>>>>>>> neil/mqtt-again:UI/Dialogs/SettingsDialog.cs
         }
 
         /// <summary>
@@ -108,6 +115,7 @@ namespace MobiFlight.UI.Dialogs
             // MobiFlight Tab
             mobiFlightPanel.SaveSettings();
 
+<<<<<<< HEAD:src/MobiFlightConnector/UI/Dialogs/SettingsDialog.cs
             // TAB Joystick & Midi
             peripheralsPanel.SaveSettings();
 
@@ -119,6 +127,10 @@ namespace MobiFlight.UI.Dialogs
             {
                 execManager.ResetProSimConnectionState();
             }
+=======
+            // MQTT server Tab
+            mqttServerSettingsPanel.SaveSettings();
+>>>>>>> neil/mqtt-again:UI/Dialogs/SettingsDialog.cs
 
             // Save all Settings
             Properties.Settings.Default.Save();

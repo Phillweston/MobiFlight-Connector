@@ -1,5 +1,6 @@
 ﻿using MobiFlight.Base;
 using MobiFlight.InputConfig;
+using MobiFlight.OutputConfig;
 using MobiFlight.UI.Panels.Settings.Device;
 using System;
 using System.Collections.Generic;
@@ -112,12 +113,26 @@ namespace MobiFlight.UI.Panels.OutputWizard
             stepperPanel.setStepperProfile(MFStepperPanel.Profiles.Find(p => p.Value.id == 0).Value);
         }
 
+        internal void SetOutputTypeComboBox(OutputConfigItem cfg)
+        {
+            OutputTypeComboBox.SelectedIndex = 0;
+
+            if (cfg.DisplayType == "InputAction")
+            {
+                OutputTypeComboBox.SelectedIndex = 1;
+            }
+            else if (SerialNumber.ExtractSerial(config.DisplaySerial) == MQTTManager.Serial)
+            {
+                OutputTypeComboBox.SelectedIndex = 2;
+            }
+        }
+
         internal void syncFromConfig(OutputConfigItem cfg)
         {
             originalConfig = cfg.Clone() as OutputConfigItem;
             config = cfg;
 
-            OutputTypeComboBox.SelectedIndex = (config.DeviceType == "InputAction") ? 1 : 0;
+            OutputTypeComboBox.SelectedIndex = (config.DisplayType == "InputAction") ? 1 : 0;
 
             if (OutputTypeIsDisplay())
             {
@@ -165,7 +180,7 @@ namespace MobiFlight.UI.Panels.OutputWizard
                         break;
                 }
             }
-            else
+            else if (OutputTypeIsInputAction())
             {
                 analogPanel1.ProjectInfo = _execManager.Project.ToProjectInfo();
                 analogPanel1.syncFromConfig(config.AnalogInputConfig);
@@ -175,6 +190,15 @@ namespace MobiFlight.UI.Panels.OutputWizard
 
                 InputTypeButtonRadioButton.Checked = config.AnalogInputConfig?.onChange == null;
                 InputTypeAnalogRadioButton.Checked = config.AnalogInputConfig?.onChange != null;
+            }
+            else if (OutputTypeIsMqttServer())
+            {
+                mqttTopicTextBox.Text = config.MqttMessage.Topic;
+                mqttValuePrefixTextBox.Text = config.MqttMessage.ValuePrefix;
+            }
+            else
+            {
+                Log.Instance.log($"Selected intput type {config.DisplayType} isn't supported", LogSeverity.Error);
             }
         }
 
@@ -186,6 +210,11 @@ namespace MobiFlight.UI.Panels.OutputWizard
         private bool OutputTypeIsInputAction()
         {
             return OutputTypeComboBox.SelectedIndex == 1;
+        }
+
+        private bool OutputTypeIsMqttServer()
+        {
+            return OutputTypeComboBox.SelectedIndex == 2;
         }
 
         internal void SetArcazeSettings(Dictionary<string, string> arcazeFirmware, Dictionary<string, ArcazeModuleSettings> moduleSettings)
@@ -255,6 +284,13 @@ namespace MobiFlight.UI.Panels.OutputWizard
                     config.ButtonInputConfig = tmpConfig;
                     config.AnalogInputConfig = null;
                 }
+            }
+            else if (OutputTypeIsMqttServer())
+            {
+                config.DisplaySerial = $"MQTTServer / {MQTTManager.Serial}";
+                config.DisplayType = MqttMessageConfig.TYPE;
+                config.MqttMessage.Topic = mqttTopicTextBox.Text;
+                config.MqttMessage.ValuePrefix = mqttValuePrefixTextBox.Text;
             }
         }
 
@@ -947,6 +983,7 @@ namespace MobiFlight.UI.Panels.OutputWizard
 
             InputActionTypePanel.Visible = OutputTypeIsInputAction();
             inputActionGroupBox.Visible = OutputTypeIsInputAction();
+            mqttMessageGroupBox.Visible = OutputTypeIsMqttServer();
 
             if (OutputTypeIsInputAction())
             {
