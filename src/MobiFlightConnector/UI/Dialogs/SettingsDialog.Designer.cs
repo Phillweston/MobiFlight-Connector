@@ -63,14 +63,11 @@
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.mobiFlightTabPage = new System.Windows.Forms.TabPage();
             this.mobiFlightPanel = new MobiFlight.UI.Panels.Settings.MobiFlightPanel();
-<<<<<<< HEAD:src/MobiFlightConnector/UI/Dialogs/SettingsDialog.Designer.cs
             this.peripheralsTabPage = new System.Windows.Forms.TabPage();
             this.peripheralsPanel = new MobiFlight.UI.Panels.Settings.PeripheralsPanel();
             this.ProSimTab = new System.Windows.Forms.TabPage();
             this.proSimPanel = new MobiFlight.UI.Panels.Settings.ProSimPanel();
-=======
             this.mqttServerTabPage = new System.Windows.Forms.TabPage();
->>>>>>> neil/mqtt-again:UI/Dialogs/SettingsDialog.Designer.cs
             this.firmwareSettingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripSeparator5 = new System.Windows.Forms.ToolStripSeparator();
             this.firmwareUpdateToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -83,12 +80,9 @@
             this.generalTabPage.SuspendLayout();
             this.tabControl1.SuspendLayout();
             this.mobiFlightTabPage.SuspendLayout();
-<<<<<<< HEAD:src/MobiFlightConnector/UI/Dialogs/SettingsDialog.Designer.cs
             this.peripheralsTabPage.SuspendLayout();
             this.ProSimTab.SuspendLayout();
-=======
             this.mqttServerTabPage.SuspendLayout();
->>>>>>> neil/mqtt-again:UI/Dialogs/SettingsDialog.Designer.cs
             this.SuspendLayout();
             // 
             // panel1
@@ -286,11 +280,8 @@
             this.tabControl1.Controls.Add(this.mobiFlightTabPage);
             this.tabControl1.Controls.Add(this.peripheralsTabPage);
             this.tabControl1.Controls.Add(this.ArcazeTabPage);
-<<<<<<< HEAD:src/MobiFlightConnector/UI/Dialogs/SettingsDialog.Designer.cs
             this.tabControl1.Controls.Add(this.ProSimTab);
-=======
             this.tabControl1.Controls.Add(this.mqttServerTabPage);
->>>>>>> neil/mqtt-again:UI/Dialogs/SettingsDialog.Designer.cs
             resources.ApplyResources(this.tabControl1, "tabControl1");
             this.tabControl1.Name = "tabControl1";
             this.tabControl1.SelectedIndex = 0;
@@ -307,7 +298,6 @@
             resources.ApplyResources(this.mobiFlightPanel, "mobiFlightPanel");
             this.mobiFlightPanel.Name = "mobiFlightPanel";
             // 
-<<<<<<< HEAD:src/MobiFlightConnector/UI/Dialogs/SettingsDialog.Designer.cs
             // peripheralsTabPage
             // 
             this.peripheralsTabPage.Controls.Add(this.peripheralsPanel);
@@ -331,14 +321,13 @@
             // 
             resources.ApplyResources(this.proSimPanel, "proSimPanel");
             this.proSimPanel.Name = "proSimPanel";
-=======
+            // 
             // mqttServerTabPage
             // 
             this.mqttServerTabPage.Controls.Add(this.mqttServerSettingsPanel);
             resources.ApplyResources(this.mqttServerTabPage, "mqttServerTabPage");
             this.mqttServerTabPage.Name = "mqttServerTabPage";
             this.mqttServerTabPage.UseVisualStyleBackColor = true;
->>>>>>> neil/mqtt-again:UI/Dialogs/SettingsDialog.Designer.cs
             // 
             // firmwareSettingsToolStripMenuItem
             // 
@@ -382,13 +371,10 @@
             this.generalTabPage.ResumeLayout(false);
             this.tabControl1.ResumeLayout(false);
             this.mobiFlightTabPage.ResumeLayout(false);
-<<<<<<< HEAD:src/MobiFlightConnector/UI/Dialogs/SettingsDialog.Designer.cs
             this.peripheralsTabPage.ResumeLayout(false);
             this.ProSimTab.ResumeLayout(false);
             this.ProSimTab.PerformLayout();
-=======
             this.mqttServerTabPage.ResumeLayout(false);
->>>>>>> neil/mqtt-again:UI/Dialogs/SettingsDialog.Designer.cs
             this.ResumeLayout(false);
 
         }
@@ -434,14 +420,11 @@
         private Panels.Settings.ArcazePanel arcazePanel;
         private Panels.Settings.MobiFlightPanel mobiFlightPanel;
         private System.Windows.Forms.ToolStripMenuItem analogDeviceToolStripMenuItem;
-<<<<<<< HEAD:src/MobiFlightConnector/UI/Dialogs/SettingsDialog.Designer.cs
         public System.Windows.Forms.TabPage peripheralsTabPage;
         private Panels.Settings.PeripheralsPanel peripheralsPanel;
         private System.Windows.Forms.TabPage ProSimTab;
         private Panels.Settings.ProSimPanel proSimPanel;
-=======
         private System.Windows.Forms.TabPage mqttServerTabPage;
         private Panels.Settings.MqttServerSettingsPanel mqttServerSettingsPanel;
->>>>>>> neil/mqtt-again:UI/Dialogs/SettingsDialog.Designer.cs
     }
 }

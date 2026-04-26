@@ -229,20 +229,17 @@ namespace MobiFlight.UI.Dialogs
                 });
             }
 
-<<<<<<< HEAD:src/MobiFlightConnector/UI/Dialogs/InputConfigWizard.cs
-            inputModuleNameComboBox.DataSource = controllerComboBoxItems;
-            inputModuleNameComboBox.SelectedIndex = 0;
-=======
             if (_execManager.GetMQTTManager().GetMqttInputs().Count > 0)
             {
-                inputModuleNameComboBox.Items.Add(new ListItem()
+                controllerComboBoxItems.Add(new ListItem<Controller>()
                 {
-                    Value = $"{MQTTManager.Serial} / {MQTTManager.Serial}",
+                    Value = new Controller() { Name = "MQTTServer", Serial = MQTTManager.Serial },
                     Label = "MQTT topic"
                 });
             }
 
->>>>>>> neil/mqtt-again:UI/Dialogs/InputConfigWizard.cs
+            inputModuleNameComboBox.DataSource = controllerComboBoxItems;
+            inputModuleNameComboBox.SelectedIndex = 0;
             preconditionPanel.SetModules(PreconditionModuleList);
         }
 #endif
@@ -287,20 +284,17 @@ namespace MobiFlight.UI.Dialogs
                 });
             }
 
-<<<<<<< HEAD:src/MobiFlightConnector/UI/Dialogs/InputConfigWizard.cs
-            inputModuleNameComboBox.DataSource = controllerComboBoxItems;
-            inputModuleNameComboBox.SelectedIndex = 0;
-=======
             if (_execManager.GetMQTTManager().GetMqttInputs().Count > 0)
             {
-                inputModuleNameComboBox.Items.Add(new ListItem()
+                controllerComboBoxItems.Add(new ListItem<Controller>()
                 {
-                    Value = $"{MQTTManager.Serial} / {MQTTManager.Serial}",
+                    Value = new Controller() { Name = "MQTTServer", Serial = MQTTManager.Serial },
                     Label = "MQTT topic"
                 });
             }
 
->>>>>>> neil/mqtt-again:UI/Dialogs/InputConfigWizard.cs
+            inputModuleNameComboBox.DataSource = controllerComboBoxItems;
+            inputModuleNameComboBox.SelectedIndex = 0;
             preconditionPanel.SetModules(PreconditionModuleList);
         }
 
