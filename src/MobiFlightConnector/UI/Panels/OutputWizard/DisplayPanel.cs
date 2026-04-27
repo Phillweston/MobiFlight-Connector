@@ -117,11 +117,11 @@ namespace MobiFlight.UI.Panels.OutputWizard
         {
             OutputTypeComboBox.SelectedIndex = 0;
 
-            if (cfg.DisplayType == "InputAction")
+            if (cfg.DeviceType == "InputAction")
             {
                 OutputTypeComboBox.SelectedIndex = 1;
             }
-            else if (SerialNumber.ExtractSerial(config.DisplaySerial) == MQTTManager.Serial)
+            else if (config.Controller?.Serial != null && SerialNumber.ExtractSerial(config.Controller.Serial) == MQTTManager.Serial)
             {
                 OutputTypeComboBox.SelectedIndex = 2;
             }
@@ -132,7 +132,7 @@ namespace MobiFlight.UI.Panels.OutputWizard
             originalConfig = cfg.Clone() as OutputConfigItem;
             config = cfg;
 
-            OutputTypeComboBox.SelectedIndex = (config.DisplayType == "InputAction") ? 1 : 0;
+            OutputTypeComboBox.SelectedIndex = (config.DeviceType == "InputAction") ? 1 : 0;
 
             if (OutputTypeIsDisplay())
             {
@@ -198,7 +198,7 @@ namespace MobiFlight.UI.Panels.OutputWizard
             }
             else
             {
-                Log.Instance.log($"Selected intput type {config.DisplayType} isn't supported", LogSeverity.Error);
+                Log.Instance.log($"Selected intput type {config.DeviceType} isn't supported", LogSeverity.Error);
             }
         }
 
@@ -287,8 +287,8 @@ namespace MobiFlight.UI.Panels.OutputWizard
             }
             else if (OutputTypeIsMqttServer())
             {
-                config.DisplaySerial = $"MQTTServer / {MQTTManager.Serial}";
-                config.DisplayType = MqttMessageConfig.TYPE;
+                config.Controller = new Controller() { Name = "MQTTServer", Serial = MQTTManager.Serial };
+                config.DeviceType = MqttMessageConfig.TYPE;
                 config.MqttMessage.Topic = mqttTopicTextBox.Text;
                 config.MqttMessage.ValuePrefix = mqttValuePrefixTextBox.Text;
             }

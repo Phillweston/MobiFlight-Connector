@@ -1,7 +1,6 @@
-﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.14.37027.9 d17.14
+# Visual Studio Version 18
+VisualStudioVersion = 18.6.11716.218 insiders
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MobiFlightConnector", "src\MobiFlightConnector\MobiFlightConnector.csproj", "{FAD08758-74C5-4DBA-9BC5-1AD98A0FE87B}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -32,6 +31,7 @@ Global
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{FAD08758-74C5-4DBA-9BC5-1AD98A0FE87B}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{FAD08758-74C5-4DBA-9BC5-1AD98A0FE87B}.Debug|Any CPU.Build.0 = Debug|x86
 		{FAD08758-74C5-4DBA-9BC5-1AD98A0FE87B}.Debug|x86.ActiveCfg = Debug|x86
 		{FAD08758-74C5-4DBA-9BC5-1AD98A0FE87B}.Debug|x86.Build.0 = Debug|x86
 		{FAD08758-74C5-4DBA-9BC5-1AD98A0FE87B}.Release|Any CPU.ActiveCfg = Release|x86

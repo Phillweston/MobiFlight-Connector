@@ -25,7 +25,11 @@ namespace MobiFlight
         {
             var config = Settings.Default.MqttServerConfig;
 
-            if (String.IsNullOrEmpty(config))
+            // Treat null / empty / whitespace-only / non-XML content as "no config yet"
+            // and fall back to defaults. This guards against a corrupted or partially
+            // written setting that would otherwise throw
+            // System.Xml.XmlException: Data at the root level is invalid.
+            if (String.IsNullOrWhiteSpace(config) || !config.TrimStart().StartsWith("<"))
             {
                 return new MQTTServerSettings()
                 {
@@ -33,9 +37,23 @@ namespace MobiFlight
                 };
             }
 
-            var serializer = new XmlSerializer(typeof(MQTTServerSettings));
-            var reader = new StringReader(config);
-            return (MQTTServerSettings)serializer.Deserialize(reader);
+            try
+            {
+                var serializer = new XmlSerializer(typeof(MQTTServerSettings));
+                using (var reader = new StringReader(config))
+                {
+                    return (MQTTServerSettings)serializer.Deserialize(reader);
+                }
+            }
+            catch (Exception ex) when (ex is InvalidOperationException || ex is System.Xml.XmlException)
+            {
+                // Stored config is corrupted; log and fall back to defaults instead of crashing the UI.
+                Log.Instance.log($"Failed to deserialize MQTT server settings, using defaults. {ex.Message}", LogSeverity.Warn);
+                return new MQTTServerSettings()
+                {
+                    Port = 1883
+                };
+            }
         }
 
         public SecureString GetPassword()

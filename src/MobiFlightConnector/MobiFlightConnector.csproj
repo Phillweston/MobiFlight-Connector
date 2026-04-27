@@ -156,7 +156,8 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="MQTTnet, Version=4.3.2.930, Culture=neutral, PublicKeyToken=fdb7629f2e364a63, processorArchitecture=MSIL">
-      <HintPath>packages\MQTTnet.4.3.2.930\lib\net48\MQTTnet.dll</HintPath>
+      <HintPath>..\..\packages\MQTTnet.4.3.2.930\lib\net48\MQTTnet.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="Midi">
       <HintPath>..\..\lib\Midi.dll</HintPath>
@@ -894,6 +895,12 @@
     </Compile>
     <Compile Include="..\..\MobiFlight\MQTT\MQTTServerSettings.cs">
       <Link>MobiFlight\MQTT\MQTTServerSettings.cs</Link>
+    </Compile>
+    <Compile Include="..\..\ExtensionMethods\SecureStringExtensions.cs">
+      <Link>ExtensionMethods\SecureStringExtensions.cs</Link>
+    </Compile>
+    <Compile Include="..\..\ExtensionMethods\TaskExtensions.cs">
+      <Link>ExtensionMethods\TaskExtensions.cs</Link>
     </Compile>
     <Compile Include="Base\ConfigErrorException.cs" />
     <Compile Include="Base\Deprecated\DeprecatedConfigFile.cs" />
@@ -1958,6 +1965,7 @@
     </EmbeddedResource>
     <EmbeddedResource Include="UI\Panels\Settings\MqttServerSettingsPanel.resx">
       <DependentUpon>MqttServerSettingsPanel.cs</DependentUpon>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="UI\Panels\Device\MFLcdDisplayPanel.resx">
       <DependentUpon>MFLcdDisplayPanel.cs</DependentUpon>

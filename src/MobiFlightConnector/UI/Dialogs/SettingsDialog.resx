@@ -601,6 +601,30 @@
   </data>
   <data name="&gt;&gt;ProSimTab.ZOrder" xml:space="preserve">
     <value>4</value>  </data>
+  <data name="mqttServerTabPage.Location" type="System.Drawing.Point, System.Drawing">
+    <value>4, 22</value>
+  </data>
+  <data name="mqttServerTabPage.Size" type="System.Drawing.Size, System.Drawing">
+    <value>563, 585</value>
+  </data>
+  <data name="mqttServerTabPage.TabIndex" type="System.Int32, mscorlib">
+    <value>6</value>
+  </data>
+  <data name="mqttServerTabPage.Text" xml:space="preserve">
+    <value>MQTT</value>
+  </data>
+  <data name="&gt;&gt;mqttServerTabPage.Name" xml:space="preserve">
+    <value>mqttServerTabPage</value>
+  </data>
+  <data name="&gt;&gt;mqttServerTabPage.Type" xml:space="preserve">
+    <value>System.Windows.Forms.TabPage, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="&gt;&gt;mqttServerTabPage.Parent" xml:space="preserve">
+    <value>tabControl1</value>
+  </data>
+  <data name="&gt;&gt;mqttServerTabPage.ZOrder" xml:space="preserve">
+    <value>5</value>
+  </data>
   <data name="tabControl1.Dock" type="System.Windows.Forms.DockStyle, System.Windows.Forms">
     <value>Fill</value>
   </data>

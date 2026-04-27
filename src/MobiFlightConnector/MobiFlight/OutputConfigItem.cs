@@ -32,6 +32,10 @@ namespace MobiFlight
 
         public string DeviceType { get; set; }
         public string DeviceName {  get { return Device?.Name;  } }
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public OutputConfig.MqttMessageConfig MqttMessage { get; set; }
+
         public OutputConfigItem()
         {
             Source = new SimConnectSource();
@@ -42,6 +46,7 @@ namespace MobiFlight
             ConfigRefs = new ConfigRefList();
             ButtonInputConfig = null;
             AnalogInputConfig = null;
+            MqttMessage = new OutputConfig.MqttMessageConfig();
         }
 
         public override bool Equals(object obj)

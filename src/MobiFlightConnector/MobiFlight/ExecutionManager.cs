@@ -26,6 +26,7 @@ namespace MobiFlight
         MobiFlightCache getMobiFlightModuleCache();
         ProSim.ProSimCacheInterface GetProSimCache();
         MidiBoardManager GetMidiBoardManager();
+        MQTTManager GetMQTTManager();
         // Add other methods and properties as needed
     }
     public class ExecutionManager : IExecutionManager
@@ -98,6 +99,7 @@ namespace MobiFlight
 #endif
         readonly JoystickManager joystickManager = new JoystickManager();
         readonly MidiBoardManager midiBoardManager = new MidiBoardManager();
+        readonly MQTTManager mqttManager = new MQTTManager();
         private readonly Dictionary<ConfigFile, InputEventExecutor> _inputEventExecutors = new Dictionary<ConfigFile, InputEventExecutor>();
         readonly InputActionExecutionCache inputActionExecutionCache = new InputActionExecutionCache();
         private ScriptRunner scriptRunner = null;
@@ -826,6 +828,11 @@ namespace MobiFlight
         public MidiBoardManager GetMidiBoardManager()
         {
             return midiBoardManager;
+        }
+
+        public MQTTManager GetMQTTManager()
+        {
+            return mqttManager;
         }
 
         public List<IModuleInfo> GetAllConnectedModulesInfo()
