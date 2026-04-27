@@ -239,6 +239,10 @@ namespace MobiFlight
             {
                 ActiveConfigIndex = 0;
                 InitInputEventExecutor();
+                // Rebuild MQTT input subscriptions from the project so that MQTT input data
+                // lives entirely inside the .mcc file (mirrors how OutputConfigItem.MqttMessage
+                // is persisted per output config item).
+                mqttManager.SyncInputsFromProject(p);
                 MessageExchange.Instance.Publish(p);
             };
 

@@ -9,11 +9,29 @@ namespace MobiFlight
 {
     public class MQTTServerSettings
     {
+        /// <summary>
+        /// Default Home Assistant MQTT discovery prefix (matches HA's own default).
+        /// </summary>
+        public const string DefaultHomeAssistantDiscoveryPrefix = "homeassistant";
+
         public string Address { get; set; }
         public int Port { get; set; }
         public string Username { get; set; }
         public bool EncryptConnection { get; set; }
         public bool ValidateCertificate { get; set; }
+
+        /// <summary>
+        /// When true, MobiFlight publishes Home Assistant MQTT Discovery configuration
+        /// messages so that every MQTT-bound output / input becomes a HA entity
+        /// automatically. See https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery
+        /// </summary>
+        public bool HomeAssistantDiscoveryEnabled { get; set; } = true;
+
+        /// <summary>
+        /// Topic prefix used when publishing Home Assistant MQTT Discovery messages.
+        /// HA listens on "homeassistant/" by default.
+        /// </summary>
+        public string HomeAssistantDiscoveryPrefix { get; set; } = DefaultHomeAssistantDiscoveryPrefix;
 
         public byte[] EncryptedPassword { get; set; }
 
@@ -42,7 +60,14 @@ namespace MobiFlight
                 var serializer = new XmlSerializer(typeof(MQTTServerSettings));
                 using (var reader = new StringReader(config))
                 {
-                    return (MQTTServerSettings)serializer.Deserialize(reader);
+                    var loaded = (MQTTServerSettings)serializer.Deserialize(reader);
+                    // Backwards compatibility: older configs don't have a discovery prefix
+                    // serialised, which would round-trip to null. Fall back to the HA default.
+                    if (string.IsNullOrWhiteSpace(loaded.HomeAssistantDiscoveryPrefix))
+                    {
+                        loaded.HomeAssistantDiscoveryPrefix = DefaultHomeAssistantDiscoveryPrefix;
+                    }
+                    return loaded;
                 }
             }
             catch (Exception ex) when (ex is InvalidOperationException || ex is System.Xml.XmlException)

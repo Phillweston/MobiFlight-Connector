@@ -469,10 +469,10 @@
     <value>2</value>
   </data>
   <data name="mqttValuePrefixTextBox.Location" type="System.Drawing.Point, System.Drawing">
-    <value>78, 48</value>
+    <value>100, 48</value>
   </data>
   <data name="mqttValuePrefixTextBox.Size" type="System.Drawing.Size, System.Drawing">
-    <value>325, 20</value>
+    <value>303, 20</value>
   </data>
   <data name="mqttValuePrefixTextBox.TabIndex" type="System.Int32, mscorlib">
     <value>3</value>
@@ -490,10 +490,10 @@
     <value>0</value>
   </data>
   <data name="mqttTopicTextBox.Location" type="System.Drawing.Point, System.Drawing">
-    <value>78, 21</value>
+    <value>100, 21</value>
   </data>
   <data name="mqttTopicTextBox.Size" type="System.Drawing.Size, System.Drawing">
-    <value>325, 20</value>
+    <value>303, 20</value>
   </data>
   <data name="mqttTopicTextBox.TabIndex" type="System.Int32, mscorlib">
     <value>2</value>

@@ -729,7 +729,14 @@ namespace MobiFlight
 
             if (cfg.DisplayType == MqttMessageConfig.TYPE)
             {
-                mqttManager.Publish(cfg.MqttMessage.Topic, $"{cfg.MqttMessage.ValuePrefix}{value}").Forget();
+                // Topic field may be empty: in that case fall back to a topic auto-derived
+                // from the config Name (Plan B – default-fill). MqttTopics.ForOutput returns
+                // null only when both Topic and Name are empty, in which case we skip publish.
+                var topic = MqttTopics.ForOutput(cfg);
+                if (!string.IsNullOrEmpty(topic))
+                {
+                    mqttManager.Publish(topic, $"{cfg.MqttMessage.ValuePrefix}{value}").Forget();
+                }
                 return value.ToString();
             }
 

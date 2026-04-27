@@ -27,6 +27,10 @@ namespace MobiFlight.UI.Panels.Settings
             validateCertificateCheckbox.Checked = settings.ValidateCertificate;
             validateCertificateCheckbox.Enabled = encryptConectionCheckbox.Checked;
 
+            haDiscoveryEnabledCheckbox.Checked = settings.HomeAssistantDiscoveryEnabled;
+            haDiscoveryPrefixTextBox.Text = settings.HomeAssistantDiscoveryPrefix;
+            haDiscoveryPrefixTextBox.Enabled = haDiscoveryEnabledCheckbox.Checked;
+
             // After setting the password text box to a placeholder value register for TextChanged events
             // so we can track whether the user changed the password and it needs to be saved after.
             this.passwordTextBox.TextChanged += new System.EventHandler(this.passwordTextBox_TextChanged);
@@ -39,6 +43,12 @@ namespace MobiFlight.UI.Panels.Settings
             settings.Port = Convert.ToInt32(settings.Port);
             settings.Username = usernameTextBox.Text;
             settings.ValidateCertificate = validateCertificateCheckbox.Checked;
+
+            settings.HomeAssistantDiscoveryEnabled = haDiscoveryEnabledCheckbox.Checked;
+            var prefix = haDiscoveryPrefixTextBox.Text?.Trim();
+            settings.HomeAssistantDiscoveryPrefix = string.IsNullOrEmpty(prefix)
+                ? MQTTServerSettings.DefaultHomeAssistantDiscoveryPrefix
+                : prefix;
 
             if (passwordChanged)
             {
@@ -68,6 +78,11 @@ namespace MobiFlight.UI.Panels.Settings
         private void encryptConectionCheckbox_CheckedChanged(object sender, EventArgs e)
         {
             validateCertificateCheckbox.Enabled = encryptConectionCheckbox.Checked;
+        }
+
+        private void haDiscoveryEnabledCheckbox_CheckedChanged(object sender, EventArgs e)
+        {
+            haDiscoveryPrefixTextBox.Enabled = haDiscoveryEnabledCheckbox.Checked;
         }
     }
 }

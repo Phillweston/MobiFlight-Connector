@@ -896,6 +896,12 @@
     <Compile Include="..\..\MobiFlight\MQTT\MQTTServerSettings.cs">
       <Link>MobiFlight\MQTT\MQTTServerSettings.cs</Link>
     </Compile>
+    <Compile Include="..\..\MobiFlight\MQTT\HomeAssistantDiscovery.cs">
+      <Link>MobiFlight\MQTT\HomeAssistantDiscovery.cs</Link>
+    </Compile>
+    <Compile Include="..\..\MobiFlight\MQTT\MqttTopics.cs">
+      <Link>MobiFlight\MQTT\MqttTopics.cs</Link>
+    </Compile>
     <Compile Include="..\..\ExtensionMethods\SecureStringExtensions.cs">
       <Link>ExtensionMethods\SecureStringExtensions.cs</Link>
     </Compile>
@@ -1622,10 +1628,6 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="Presets\msfs2020_simvars.cip">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="..\..\MQTT\inputs.mqtt.json">
-      <Link>MQTT\inputs.mqtt.json</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="Presets\msfs2020_eventids.cip">

@@ -38,6 +38,11 @@
             this.passwordTextBox = new System.Windows.Forms.MaskedTextBox();
             this.encryptConectionCheckbox = new System.Windows.Forms.CheckBox();
             this.validateCertificateCheckbox = new System.Windows.Forms.CheckBox();
+            this.haDiscoveryGroupBox = new System.Windows.Forms.GroupBox();
+            this.haDiscoveryEnabledCheckbox = new System.Windows.Forms.CheckBox();
+            this.haDiscoveryPrefixLabel = new System.Windows.Forms.Label();
+            this.haDiscoveryPrefixTextBox = new System.Windows.Forms.TextBox();
+            this.haDiscoveryGroupBox.SuspendLayout();
             this.SuspendLayout();
             // 
             // label1
@@ -128,10 +133,50 @@
             this.validateCertificateCheckbox.Text = "Validate certificate";
             this.validateCertificateCheckbox.UseVisualStyleBackColor = true;
             // 
+            // haDiscoveryGroupBox
+            // 
+            this.haDiscoveryGroupBox.Controls.Add(this.haDiscoveryEnabledCheckbox);
+            this.haDiscoveryGroupBox.Controls.Add(this.haDiscoveryPrefixLabel);
+            this.haDiscoveryGroupBox.Controls.Add(this.haDiscoveryPrefixTextBox);
+            this.haDiscoveryGroupBox.Location = new System.Drawing.Point(10, 180);
+            this.haDiscoveryGroupBox.Name = "haDiscoveryGroupBox";
+            this.haDiscoveryGroupBox.Size = new System.Drawing.Size(380, 90);
+            this.haDiscoveryGroupBox.TabIndex = 10;
+            this.haDiscoveryGroupBox.TabStop = false;
+            this.haDiscoveryGroupBox.Text = "Home Assistant MQTT Discovery";
+            // 
+            // haDiscoveryEnabledCheckbox
+            // 
+            this.haDiscoveryEnabledCheckbox.AutoSize = true;
+            this.haDiscoveryEnabledCheckbox.Location = new System.Drawing.Point(10, 22);
+            this.haDiscoveryEnabledCheckbox.Name = "haDiscoveryEnabledCheckbox";
+            this.haDiscoveryEnabledCheckbox.Size = new System.Drawing.Size(225, 17);
+            this.haDiscoveryEnabledCheckbox.TabIndex = 0;
+            this.haDiscoveryEnabledCheckbox.Text = "Publish discovery messages to Home Assistant";
+            this.haDiscoveryEnabledCheckbox.UseVisualStyleBackColor = true;
+            this.haDiscoveryEnabledCheckbox.CheckedChanged += new System.EventHandler(this.haDiscoveryEnabledCheckbox_CheckedChanged);
+            // 
+            // haDiscoveryPrefixLabel
+            // 
+            this.haDiscoveryPrefixLabel.AutoSize = true;
+            this.haDiscoveryPrefixLabel.Location = new System.Drawing.Point(10, 53);
+            this.haDiscoveryPrefixLabel.Name = "haDiscoveryPrefixLabel";
+            this.haDiscoveryPrefixLabel.Size = new System.Drawing.Size(85, 13);
+            this.haDiscoveryPrefixLabel.TabIndex = 1;
+            this.haDiscoveryPrefixLabel.Text = "Discovery prefix:";
+            // 
+            // haDiscoveryPrefixTextBox
+            // 
+            this.haDiscoveryPrefixTextBox.Location = new System.Drawing.Point(140, 50);
+            this.haDiscoveryPrefixTextBox.Name = "haDiscoveryPrefixTextBox";
+            this.haDiscoveryPrefixTextBox.Size = new System.Drawing.Size(220, 20);
+            this.haDiscoveryPrefixTextBox.TabIndex = 2;
+            // 
             // MqttServerSettingsPanel
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.Controls.Add(this.haDiscoveryGroupBox);
             this.Controls.Add(this.validateCertificateCheckbox);
             this.Controls.Add(this.encryptConectionCheckbox);
             this.Controls.Add(this.passwordTextBox);
@@ -144,6 +189,8 @@
             this.Controls.Add(this.label1);
             this.Name = "MqttServerSettingsPanel";
             this.Size = new System.Drawing.Size(455, 516);
+            this.haDiscoveryGroupBox.ResumeLayout(false);
+            this.haDiscoveryGroupBox.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -161,5 +208,9 @@
         private System.Windows.Forms.MaskedTextBox passwordTextBox;
         private System.Windows.Forms.CheckBox encryptConectionCheckbox;
         private System.Windows.Forms.CheckBox validateCertificateCheckbox;
+        private System.Windows.Forms.GroupBox haDiscoveryGroupBox;
+        private System.Windows.Forms.CheckBox haDiscoveryEnabledCheckbox;
+        private System.Windows.Forms.Label haDiscoveryPrefixLabel;
+        private System.Windows.Forms.TextBox haDiscoveryPrefixTextBox;
     }
 }

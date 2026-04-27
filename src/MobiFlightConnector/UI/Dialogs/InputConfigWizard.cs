@@ -229,14 +229,12 @@ namespace MobiFlight.UI.Dialogs
                 });
             }
 
-            if (_execManager.GetMQTTManager().GetMqttInputs().Count > 0)
+            // Always offer MQTT as a controller; users can add new topics inline.
+            controllerComboBoxItems.Add(new ListItem<Controller>()
             {
-                controllerComboBoxItems.Add(new ListItem<Controller>()
-                {
-                    Value = new Controller() { Name = "MQTTServer", Serial = MQTTManager.Serial },
-                    Label = "MQTT topic"
-                });
-            }
+                Value = new Controller() { Name = "MQTTServer", Serial = MQTTManager.Serial },
+                Label = "MQTT topic"
+            });
 
             inputModuleNameComboBox.DataSource = controllerComboBoxItems;
             inputModuleNameComboBox.SelectedIndex = 0;
@@ -284,14 +282,12 @@ namespace MobiFlight.UI.Dialogs
                 });
             }
 
-            if (_execManager.GetMQTTManager().GetMqttInputs().Count > 0)
+            // Always offer MQTT as a controller; users can add new topics inline.
+            controllerComboBoxItems.Add(new ListItem<Controller>()
             {
-                controllerComboBoxItems.Add(new ListItem<Controller>()
-                {
-                    Value = new Controller() { Name = "MQTTServer", Serial = MQTTManager.Serial },
-                    Label = "MQTT topic"
-                });
-            }
+                Value = new Controller() { Name = "MQTTServer", Serial = MQTTManager.Serial },
+                Label = "MQTT topic"
+            });
 
             inputModuleNameComboBox.DataSource = controllerComboBoxItems;
             inputModuleNameComboBox.SelectedIndex = 0;
@@ -380,6 +376,14 @@ namespace MobiFlight.UI.Dialogs
             preconditionPanel.syncToConfig(config);
 
             if (config.Controller == null) return true;
+
+            // MQTT inline editor: register the (possibly newly typed) topic with MQTTManager and
+            // make sure inputTypeComboBox.SelectedItem points at a matching ListItem<IBaseDevice>
+            // so the rest of this method (which assumes a SelectedItem) can run unchanged.
+            if (MQTTManager.IsMQTTSerial(config.Controller.Serial))
+            {
+                SyncMqttInputFromEditor();
+            }
 
             IBaseDevice device = ((ListItem<IBaseDevice>)inputTypeComboBox.SelectedItem).Value;
             if (device.Label != InputConfigItem.TYPE_NOTSET)
@@ -583,6 +587,9 @@ namespace MobiFlight.UI.Dialogs
                 {
                     Log.Instance.log($"Problem setting input type ComboBox. {config.DeviceName}", LogSeverity.Error);
                 }
+
+                // Show or hide the MQTT inline topic editor based on the selected controller.
+                SetMqttEditorVisibility(MQTTManager.IsMQTTSerial(serial));
             }
             catch (Exception ex)
             {
@@ -592,11 +599,186 @@ namespace MobiFlight.UI.Dialogs
 
         private DeviceType determineCurrentDeviceType(String serial)
         {
+            if (MQTTManager.IsMQTTSerial(serial))
+            {
+                IBaseDevice mqttDevice = (inputTypeComboBox.SelectedItem as ListItem<IBaseDevice>)?.Value;
+                if (mqttDevice != null && !string.IsNullOrEmpty(mqttDevice.Name) && mqttDevice.Label != InputConfigItem.TYPE_NOTSET)
+                    return mqttDevice.Type;
+                // Free-typed new topic: fall back to the inline Type combo selection.
+                return (mqttTypeComboBox?.SelectedItem as ListItem<DeviceType>)?.Value ?? DeviceType.NotSet;
+            }
+
             IBaseDevice device = (inputTypeComboBox.SelectedItem as ListItem<IBaseDevice>)?.Value;
             if (device != null && !string.IsNullOrEmpty(device?.Name))
                 return device.Type;
             else
                 return DeviceType.NotSet;
+        }
+
+        // ---------------------------------------------------------------------
+        // MQTT inline topic editor
+        //
+        // When the user picks the "MQTT topic" controller in Add Input Config we want them to
+        // be able to type a brand-new topic right inside the wizard. The topic is persisted
+        // as part of the InputConfigItem inside the .mcc project file (DeviceName=topic,
+        // DeviceType=Button/AnalogInput) -- mirroring how OutputConfigItem.MqttMessage stores
+        // the output side. We also need to capture the input Type (Button / AnalogInput) and
+        // an optional Label, since both pieces are required by MQTTManager to interpret
+        // incoming messages at runtime.
+        //
+        // The extra controls are added at runtime to avoid touching the .Designer.cs / .resx
+        // files (which makes the Designer view brittle).
+        // ---------------------------------------------------------------------
+        private System.Windows.Forms.Label mqttTypeLabel;
+        private System.Windows.Forms.ComboBox mqttTypeComboBox;
+        private System.Windows.Forms.Label mqttTopicLabel;
+        private System.Windows.Forms.TextBox mqttLabelTextBox;
+        private bool mqttEditorBuilt = false;
+
+        private void BuildMqttEditorIfNeeded()
+        {
+            if (mqttEditorBuilt) return;
+            mqttEditorBuilt = true;
+
+            var parent = inputTypeComboBox.Parent;
+            if (parent == null) return;
+
+            var anchorTop = inputTypeComboBox.Top;
+            var labelTop = Math.Max(0, anchorTop - 18);
+
+            mqttTypeLabel = new System.Windows.Forms.Label
+            {
+                Text = "MQTT Type",
+                AutoSize = true,
+                Location = new System.Drawing.Point(inputTypeComboBox.Right + 8, labelTop),
+                Visible = false,
+            };
+
+            mqttTypeComboBox = new System.Windows.Forms.ComboBox
+            {
+                DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList,
+                Location = new System.Drawing.Point(inputTypeComboBox.Right + 8, anchorTop),
+                Width = 110,
+                Visible = false,
+                DisplayMember = "Label",
+                ValueMember = "Value",
+            };
+            mqttTypeComboBox.Items.Add(new ListItem<DeviceType> { Label = "Button", Value = DeviceType.Button });
+            mqttTypeComboBox.Items.Add(new ListItem<DeviceType> { Label = "AnalogInput", Value = DeviceType.AnalogInput });
+            mqttTypeComboBox.SelectedIndex = 0;
+            mqttTypeComboBox.SelectedIndexChanged += (s, e) =>
+            {
+                // Re-render the Input Settings panel when the MQTT type switches between Button/AnalogInput.
+                inputTypeComboBox_SelectedIndexChanged(this, EventArgs.Empty);
+            };
+
+            mqttTopicLabel = new System.Windows.Forms.Label
+            {
+                Text = "Label",
+                AutoSize = true,
+                Location = new System.Drawing.Point(mqttTypeComboBox.Right + 8, labelTop),
+                Visible = false,
+            };
+
+            mqttLabelTextBox = new System.Windows.Forms.TextBox
+            {
+                Location = new System.Drawing.Point(mqttTypeComboBox.Right + 8, anchorTop),
+                Width = 160,
+                Visible = false,
+            };
+
+            parent.Controls.Add(mqttTypeLabel);
+            parent.Controls.Add(mqttTypeComboBox);
+            parent.Controls.Add(mqttTopicLabel);
+            parent.Controls.Add(mqttLabelTextBox);
+
+            // When the user picks an existing topic from the dropdown, populate the helper
+            // fields so they reflect what is currently stored for that topic.
+            inputTypeComboBox.SelectedIndexChanged += MqttSyncEditorFromSelection;
+            // When the user types a brand-new topic, refresh the Input Settings panel so it
+            // matches the currently selected MQTT type.
+            inputTypeComboBox.TextUpdate += (s, e) => inputTypeComboBox_SelectedIndexChanged(this, EventArgs.Empty);
+        }
+
+        private void MqttSyncEditorFromSelection(object sender, EventArgs e)
+        {
+            if (mqttTypeComboBox == null || mqttLabelTextBox == null) return;
+
+            var serial = (inputModuleNameComboBox.SelectedItem as ListItem<Controller>)?.Value?.Serial;
+            if (!MQTTManager.IsMQTTSerial(serial)) return;
+
+            if (inputTypeComboBox.SelectedItem is ListItem<IBaseDevice> li && li.Value is MQTTInput mi)
+            {
+                for (int i = 0; i < mqttTypeComboBox.Items.Count; i++)
+                {
+                    if ((mqttTypeComboBox.Items[i] as ListItem<DeviceType>)?.Value == mi.Type)
+                    {
+                        mqttTypeComboBox.SelectedIndex = i;
+                        break;
+                    }
+                }
+                mqttLabelTextBox.Text = mi.Label ?? string.Empty;
+            }
+        }
+
+        private void SetMqttEditorVisibility(bool visible)
+        {
+            BuildMqttEditorIfNeeded();
+            if (!mqttEditorBuilt) return;
+
+            mqttTypeLabel.Visible = visible;
+            mqttTypeComboBox.Visible = visible;
+            mqttTopicLabel.Visible = visible;
+            mqttLabelTextBox.Visible = visible;
+
+            // When MQTT is selected, allow free-text entry of new topics. Otherwise enforce
+            // pick-from-list semantics like the rest of the controllers expect.
+            inputTypeComboBox.DropDownStyle = visible
+                ? System.Windows.Forms.ComboBoxStyle.DropDown
+                : System.Windows.Forms.ComboBoxStyle.DropDownList;
+        }
+
+        /// <summary>
+        /// Reads the topic / type / label out of the MQTT inline editor, registers the topic
+        /// with the MQTTManager in-memory (so the broker subscribes immediately, even before
+        /// the project is saved) and ensures inputTypeComboBox.SelectedItem ends up pointing
+        /// at a matching ListItem so the rest of _syncFormToConfig can run unchanged. The
+        /// authoritative storage is the InputConfigItem itself (DeviceName=topic,
+        /// DeviceType=Button/AnalogInput), which is serialized into the .mcc project file --
+        /// MQTTManager rebuilds its in-memory list from the project on every project change.
+        /// </summary>
+        private void SyncMqttInputFromEditor()
+        {
+            if (mqttTypeComboBox == null) return;
+
+            var topic = (inputTypeComboBox.Text ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(topic) || topic == InputConfigItem.TYPE_NOTSET)
+                return;
+
+            var deviceType = (mqttTypeComboBox.SelectedItem as ListItem<DeviceType>)?.Value ?? DeviceType.Button;
+            var label = string.IsNullOrWhiteSpace(mqttLabelTextBox?.Text) ? topic : mqttLabelTextBox.Text.Trim();
+            var input = new MQTTInput { Type = deviceType, Label = label };
+
+            _execManager.GetMQTTManager().AddOrUpdateInput(topic, input);
+
+            // Make sure the dropdown contains a ListItem<IBaseDevice> wrapping this input
+            // and select it, so downstream code in _syncFormToConfig sees a valid SelectedItem.
+            ListItem<IBaseDevice> match = null;
+            foreach (var item in inputTypeComboBox.Items)
+            {
+                if (item is ListItem<IBaseDevice> existing && existing.Value is MQTTInput existingMi && existingMi.Label == input.Label)
+                {
+                    match = existing;
+                    match.Value = input; // refresh the underlying type/label
+                    break;
+                }
+            }
+            if (match == null)
+            {
+                match = new ListItem<IBaseDevice> { Label = input.Label, Value = input };
+                inputTypeComboBox.Items.Add(match);
+            }
+            inputTypeComboBox.SelectedItem = match;
         }
 
         private void inputTypeComboBox_SelectedIndexChanged(object sender, EventArgs e)

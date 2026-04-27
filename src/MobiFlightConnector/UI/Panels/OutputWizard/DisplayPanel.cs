@@ -5,6 +5,7 @@ using MobiFlight.UI.Panels.Settings.Device;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace MobiFlight.UI.Panels.OutputWizard
@@ -43,6 +44,35 @@ namespace MobiFlight.UI.Panels.OutputWizard
         public DisplayPanel()
         {
             InitializeComponent();
+
+            // Hint that an empty topic falls back to a name-derived topic at runtime
+            // (see MqttTopics.ForOutput / Plan B "default-fill" topic resolution).
+            var mqttTip = new ToolTip();
+            mqttTip.SetToolTip(mqttTopicTextBox,
+                "Leave empty to auto-use 'mobiflight/<config name>'. " +
+                "Renaming the config will then update the topic automatically.");
+
+            // Refresh the cue banner whenever this tab becomes visible or the textbox
+            // gains focus, so the auto-derived placeholder reflects the current Name
+            // (which lives on a different tab and may have just changed).
+            VisibleChanged += (s, e) => { if (Visible) RefreshMqttTopicCue(); };
+            mqttTopicTextBox.Enter += (s, e) => RefreshMqttTopicCue();
+        }
+
+        // P/Invoke for the standard EditBox cue banner (a.k.a. placeholder text).
+        // EM_SETCUEBANNER = 0x1501; wParam = 1 keeps the cue visible while focused.
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam,
+            [MarshalAs(UnmanagedType.LPWStr)] string lParam);
+
+        private void RefreshMqttTopicCue()
+        {
+            if (mqttTopicTextBox == null || !mqttTopicTextBox.IsHandleCreated) return;
+
+            // Build cue from the current config name (config may not yet be assigned
+            // before the first syncFromConfig call, so guard accordingly).
+            var auto = MqttTopics.AutoFromName(config?.Name) ?? "mobiflight/<config name>";
+            SendMessage(mqttTopicTextBox.Handle, 0x1501, (IntPtr)1, auto);
         }
 
         public void SetConfigRefsDataView(List<OutputConfigItem> outputConfigs, string filterGuid)
@@ -193,8 +223,22 @@ namespace MobiFlight.UI.Panels.OutputWizard
             }
             else if (OutputTypeIsMqttServer())
             {
-                mqttTopicTextBox.Text = config.MqttMessage.Topic;
+                // Pre-fill the Topic field with the auto-derived value when the user has
+                // not stored a custom topic. They can clear it (placeholder reappears) or
+                // overwrite it; on save we collapse "text == current auto" back to empty
+                // so the link to Name persists across renames.
+                var stored = config.MqttMessage.Topic;
+                if (string.IsNullOrEmpty(stored))
+                {
+                    var auto = MqttTopics.AutoFromName(config.Name);
+                    mqttTopicTextBox.Text = auto ?? string.Empty;
+                }
+                else
+                {
+                    mqttTopicTextBox.Text = stored;
+                }
                 mqttValuePrefixTextBox.Text = config.MqttMessage.ValuePrefix;
+                RefreshMqttTopicCue();
             }
             else
             {
@@ -240,7 +284,7 @@ namespace MobiFlight.UI.Panels.OutputWizard
                         break;
 
                     case MobiFlightStepper.TYPE:
-                        // it is not nice but we haev to check what kind of stepper the stepper is
+                        // it is not nice but we have to check what kind of stepper the stepper is
                         // to show or not show the manual calibration piece.
                         stepperPanel.syncToConfig(config);
                         break;
@@ -289,7 +333,15 @@ namespace MobiFlight.UI.Panels.OutputWizard
             {
                 config.Controller = new Controller() { Name = "MQTTServer", Serial = MQTTManager.Serial };
                 config.DeviceType = MqttMessageConfig.TYPE;
-                config.MqttMessage.Topic = mqttTopicTextBox.Text;
+
+                // If the textbox value is exactly what we would have auto-derived from the
+                // current Name, persist it as empty so a future rename keeps updating the
+                // effective topic. Anything else (including text the user typed verbatim
+                // that just happens to differ in case/punctuation) is treated as custom.
+                var typed = mqttTopicTextBox.Text ?? string.Empty;
+                var auto = MqttTopics.AutoFromName(config.Name);
+                config.MqttMessage.Topic = (auto != null && typed == auto) ? string.Empty : typed;
+
                 config.MqttMessage.ValuePrefix = mqttValuePrefixTextBox.Text;
             }
         }
@@ -984,6 +1036,16 @@ namespace MobiFlight.UI.Panels.OutputWizard
             InputActionTypePanel.Visible = OutputTypeIsInputAction();
             inputActionGroupBox.Visible = OutputTypeIsInputAction();
             mqttMessageGroupBox.Visible = OutputTypeIsMqttServer();
+
+            if (OutputTypeIsMqttServer() && string.IsNullOrEmpty(mqttTopicTextBox.Text))
+            {
+                // First time the MQTT branch is shown for this config (or after the user
+                // cleared the field): pre-fill with the auto-derived topic so they see
+                // the actual value that will be published, not just a placeholder hint.
+                var auto = MqttTopics.AutoFromName(config?.Name);
+                if (!string.IsNullOrEmpty(auto)) mqttTopicTextBox.Text = auto;
+                RefreshMqttTopicCue();
+            }
 
             if (OutputTypeIsInputAction())
             {

@@ -6,12 +6,9 @@ using System.Threading.Tasks;
 using System;
 using System.Linq;
 using static MobiFlight.MobiFlightButton;
-using Newtonsoft.Json;
-using System.IO;
 using SharpDX.DirectInput;
-using Newtonsoft.Json.Schema;
-using Newtonsoft.Json.Schema.Generation;
 using System.Diagnostics;
+using MobiFlight.Base;
 
 namespace MobiFlight
 {
@@ -31,9 +28,17 @@ namespace MobiFlight
         private IMqttClient mqttClient;
         private readonly Dictionary<string, string> outputCache = new Dictionary<string, string>();
 
+        // Last project handed to us via SyncInputsFromProject; needed so we can (re)publish
+        // Home Assistant discovery messages every time the broker connection comes up.
+        private Project currentProject;
+
+        // Discovery config topics we have already published as retained messages on the
+        // current broker. Used to send empty retained payloads (which removes the entity
+        // in HA) for items that disappeared from the project on the next sync.
+        private readonly HashSet<string> publishedDiscoveryTopics = new HashSet<string>();
+
         public MQTTManager()
         {
-            LoadInputs();
         }
 
         /// <summary>
@@ -47,28 +52,175 @@ namespace MobiFlight
         }
 
         /// <summary>
-        /// Provides the list of MQTTInput events defined in the corresponding inputs.mqtt.json file.
+        /// Provides the list of MQTT input events currently registered. The list is rebuilt
+        /// from the active <see cref="Project"/> via <see cref="SyncInputsFromProject"/>;
+        /// MQTT inputs live inside each <c>InputConfigItem</c> (DeviceName = topic,
+        /// DeviceType = Button/AnalogInput), mirroring how output MQTT data is stored in
+        /// <c>OutputConfigItem.MqttMessage</c>.
         /// </summary>
-        /// <returns>A dictionary of the input events, where the keys are the MQTT topics and the values are MQTTInput objects.</returns>
+        /// <returns>A dictionary keyed by MQTT topic.</returns>
         public Dictionary<string, MQTTInput> GetMqttInputs()
         {
             return Inputs;
         }
 
         /// <summary>
-        /// Loads a list of MQTT inputs from the inputs.mqtt.json file.
+        /// Adds or updates an MQTT input subscription in memory only. Used by the input
+        /// wizard so that newly typed topics are subscribed to immediately without waiting
+        /// for the project to be saved. The authoritative storage is the project file (.mcc):
+        /// the entry will be re-derived from the corresponding InputConfigItem on the next
+        /// project change.
         /// </summary>
-        public void LoadInputs()
+        /// <param name="topic">The MQTT topic to subscribe to. Must be non-empty.</param>
+        /// <param name="input">The input definition (Type + Label) associated with the topic.</param>
+        public void AddOrUpdateInput(string topic, MQTTInput input)
+        {
+            if (string.IsNullOrWhiteSpace(topic) || input == null)
+                return;
+
+            if (Inputs == null)
+                Inputs = new Dictionary<string, MQTTInput>();
+
+            var isNew = !Inputs.ContainsKey(topic);
+            Inputs[topic] = input;
+
+            if (isNew && (mqttClient?.IsConnected ?? false))
+            {
+                // Fire-and-forget subscribe for the new topic so live editing takes effect immediately.
+                _ = SubscribeToTopic(topic);
+            }
+        }
+
+        /// <summary>
+        /// Rebuilds the in-memory MQTT input list from the supplied project. Walks every
+        /// <see cref="InputConfigItem"/> across all configuration files; an item belongs to
+        /// MQTT when its controller serial matches <see cref="Serial"/>. The item's
+        /// <c>DeviceName</c> is the topic and its <c>DeviceType</c> determines the MQTT input
+        /// type (Button or AnalogInput).
+        ///
+        /// If the client is currently connected, subscriptions are reconciled: topics that
+        /// disappeared from the project are unsubscribed and freshly added topics are
+        /// subscribed.
+        /// </summary>
+        /// <param name="project">The project whose input configs should drive the MQTT subscriptions. Null is treated as an empty project.</param>
+        public void SyncInputsFromProject(Project project)
+        {
+            currentProject = project;
+
+            var newInputs = new Dictionary<string, MQTTInput>();
+            if (project?.ConfigFiles != null)
+            {
+                foreach (var file in project.ConfigFiles)
+                {
+                    if (file?.ConfigItems == null) continue;
+                    foreach (var item in file.ConfigItems.OfType<InputConfigItem>())
+                    {
+                        if (!IsMQTTSerial(item.Controller?.Serial)) continue;
+
+                        // Topic field (DeviceName) may be empty: fall back to a topic
+                        // auto-derived from the config Name (Plan B – default-fill).
+                        var topic = MqttTopics.ForInput(item);
+                        if (string.IsNullOrWhiteSpace(topic)) continue;
+
+                        var deviceType = MapInputDeviceType(item.DeviceType);
+                        if (!deviceType.HasValue) continue;
+
+                        // Last write wins on duplicate topics; the same topic shared by
+                        // multiple input configs is intentionally collapsed to a single
+                        // subscription.
+                        newInputs[topic] = new MQTTInput
+                        {
+                            Type = deviceType.Value,
+                            Label = topic
+                        };
+                    }
+                }
+            }
+
+            var oldTopics = new HashSet<string>(Inputs?.Keys ?? Enumerable.Empty<string>());
+            var newTopics = new HashSet<string>(newInputs.Keys);
+            Inputs = newInputs;
+
+            Log.Instance.log($"MQTT: Synced {Inputs.Count} input topic(s) from project.", LogSeverity.Debug);
+
+            if (mqttClient?.IsConnected ?? false)
+            {
+                var toUnsubscribe = oldTopics.Where(t => !newTopics.Contains(t)).ToList();
+                var toSubscribe = newTopics.Where(t => !oldTopics.Contains(t)).ToList();
+
+                if (toUnsubscribe.Count > 0 || toSubscribe.Count > 0)
+                {
+                    _ = ReconcileSubscriptionsAsync(toUnsubscribe, toSubscribe);
+                }
+            }
+
+            // The set of MQTT-bound config items can change with every project edit, so
+            // republish (or retract) Home Assistant discovery records to keep HA in sync.
+            if (mqttClient?.IsConnected ?? false)
+            {
+                _ = PublishHomeAssistantDiscoveryAsync();
+            }
+        }
+
+        /// <summary>
+        /// Maps an <see cref="InputConfigItem.DeviceType"/> string constant to a
+        /// <see cref="DeviceType"/> understood by the MQTT message dispatcher. Only the
+        /// types currently supported over MQTT (Button and AnalogInput) yield a value;
+        /// other input device types (encoder, shift register, multiplexer) intentionally
+        /// return null so they are skipped.
+        /// </summary>
+        private static DeviceType? MapInputDeviceType(string deviceType)
+        {
+            if (deviceType == InputConfigItem.TYPE_BUTTON) return DeviceType.Button;
+            if (deviceType == InputConfigItem.TYPE_ANALOG) return DeviceType.AnalogInput;
+            return null;
+        }
+
+        private async Task ReconcileSubscriptionsAsync(List<string> toUnsubscribe, List<string> toSubscribe)
         {
             try
             {
-                Inputs = JsonConvert.DeserializeObject<Dictionary<string, MQTTInput>>(File.ReadAllText("MQTT/inputs.mqtt.json"));
-                Log.Instance.log($"Loaded {Inputs.Count} MQTT input events", LogSeverity.Info);
+                if (toUnsubscribe.Count > 0)
+                {
+                    var unsubOptions = mqttFactory.CreateUnsubscribeOptionsBuilder();
+                    foreach (var topic in toUnsubscribe)
+                    {
+                        unsubOptions.WithTopicFilter(topic);
+                        Log.Instance.log($"MQTT: Unsubscribing from {topic} (no longer in project).", LogSeverity.Debug);
+                    }
+                    await mqttClient.UnsubscribeAsync(unsubOptions.Build(), CancellationToken.None);
+                }
+
+                if (toSubscribe.Count > 0)
+                {
+                    var subOptions = mqttFactory.CreateSubscribeOptionsBuilder();
+                    foreach (var topic in toSubscribe)
+                    {
+                        subOptions.WithTopicFilter(f => { f.WithTopic(topic); });
+                        Log.Instance.log($"MQTT: Subscribing to {topic} (newly added in project).", LogSeverity.Debug);
+                    }
+                    await mqttClient.SubscribeAsync(subOptions.Build(), CancellationToken.None);
+                }
             }
             catch (Exception ex)
             {
-                Log.Instance.log($"Unable to load MQTT input events from MQTT/inputs.mqtt.json: {ex.Message}", LogSeverity.Error);
+                Log.Instance.log($"MQTT: Failed to reconcile subscriptions: {ex.Message}", LogSeverity.Error);
+            }
+        }
 
+        private async Task SubscribeToTopic(string topic)
+        {
+            try
+            {
+                var options = mqttFactory.CreateSubscribeOptionsBuilder()
+                    .WithTopicFilter(f => { f.WithTopic(topic); })
+                    .Build();
+                await mqttClient.SubscribeAsync(options, CancellationToken.None);
+                Log.Instance.log($"MQTT: Subscribed to newly added topic {topic}", LogSeverity.Debug);
+            }
+            catch (Exception ex)
+            {
+                Log.Instance.log($"MQTT: Failed to subscribe to {topic}: {ex.Message}", LogSeverity.Error);
             }
         }
 
@@ -142,7 +294,8 @@ namespace MobiFlight
         }
 
         /// <summary>
-        /// Subscribes to the MQTT topics for each input event described in the inputs.mqtt.json file.
+        /// Subscribes to the MQTT topics for each registered input event (topics are sourced
+        /// from the active project via <see cref="SyncInputsFromProject"/>).
         /// </summary>
         /// <returns>A task that completes once all topics are subscribed to.</returns>
         private async Task SubscribeToInputs()
@@ -182,6 +335,11 @@ namespace MobiFlight
             await Publish(MQTTManager.MobiFlightRunningStateTopic, "1");
 
             await SubscribeToInputs();
+
+            // Newly connected (or reconnected) broker has no memory of any previous
+            // discovery messages we sent in this session, so always (re)publish them.
+            publishedDiscoveryTopics.Clear();
+            await PublishHomeAssistantDiscoveryAsync();
         }
 
         /// <summary>
@@ -212,7 +370,7 @@ namespace MobiFlight
                     DeviceId = input.Label,
                 };
 
-                // Set specific type and value properties based on the input's type defined in the inputs.mqtt.json file.
+                // Set specific type and value properties based on the input's type stored on the originating InputConfigItem.
                 if (input.Type == DeviceType.Button)
                 {
                     eventArgs.Type = DeviceType.Button;
@@ -283,6 +441,80 @@ namespace MobiFlight
             {
                 Log.Instance.log($"MQTT: Unable to publish {payload} to {topic}: {ex.Message}", LogSeverity.Error);
             }
+        }
+
+        /// <summary>
+        /// Publishes a payload as a retained MQTT message, bypassing the deduplication
+        /// cache used by <see cref="Publish"/>. Required for Home Assistant Discovery
+        /// configuration messages: HA only learns about an entity when it sees a retained
+        /// message on the discovery topic, and an empty retained payload removes the entity.
+        /// </summary>
+        private async Task PublishRetainedRaw(string topic, string payload)
+        {
+            if (!mqttClient?.IsConnected ?? true) return;
+            if (string.IsNullOrEmpty(topic)) return;
+
+            try
+            {
+                var builder = new MqttApplicationMessageBuilder()
+                    .WithTopic(topic)
+                    .WithPayload(payload ?? string.Empty)
+                    .WithRetainFlag(true);
+
+                await mqttClient.PublishAsync(builder.Build(), CancellationToken.None);
+                Log.Instance.log($"MQTT: Published retained {(string.IsNullOrEmpty(payload) ? "(empty)" : "discovery")} message to {topic}.", LogSeverity.Debug);
+            }
+            catch (Exception ex)
+            {
+                Log.Instance.log($"MQTT: Unable to publish retained message to {topic}: {ex.Message}", LogSeverity.Error);
+            }
+        }
+
+        /// <summary>
+        /// Walks the current project and publishes a Home Assistant MQTT Discovery config
+        /// message (retained) for every MQTT-bound output and input. Items that were
+        /// previously announced but are no longer present receive an empty retained payload
+        /// so HA removes the corresponding entity.
+        /// </summary>
+        private async Task PublishHomeAssistantDiscoveryAsync()
+        {
+            if (!mqttClient?.IsConnected ?? true) return;
+
+            var settings = MQTTServerSettings.Load();
+            if (!settings.HomeAssistantDiscoveryEnabled)
+            {
+                // If discovery was previously enabled and we already announced entities,
+                // proactively retract them so HA doesn't keep stale entries around.
+                if (publishedDiscoveryTopics.Count > 0)
+                {
+                    foreach (var staleTopic in publishedDiscoveryTopics.ToList())
+                    {
+                        await PublishRetainedRaw(staleTopic, string.Empty);
+                    }
+                    publishedDiscoveryTopics.Clear();
+                }
+                return;
+            }
+
+            var messages = HomeAssistantDiscovery.Build(currentProject, settings.HomeAssistantDiscoveryPrefix);
+            var newTopics = new HashSet<string>(messages.Select(m => m.Topic));
+
+            // Retract any entities that disappeared since the last publish.
+            foreach (var stale in publishedDiscoveryTopics.Where(t => !newTopics.Contains(t)).ToList())
+            {
+                await PublishRetainedRaw(stale, string.Empty);
+            }
+
+            // Publish (or refresh) the current set.
+            foreach (var msg in messages)
+            {
+                await PublishRetainedRaw(msg.Topic, msg.Payload);
+            }
+
+            publishedDiscoveryTopics.Clear();
+            foreach (var t in newTopics) publishedDiscoveryTopics.Add(t);
+
+            Log.Instance.log($"MQTT: Published {messages.Count} Home Assistant discovery message(s).", LogSeverity.Info);
         }
 
         /// <summary>
