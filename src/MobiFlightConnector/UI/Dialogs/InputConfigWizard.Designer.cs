@@ -133,6 +133,9 @@
             this.displayTypeGroupBox.Controls.Add(this.momentaryButtonCheckBox);
             this.displayTypeGroupBox.Controls.Add(this.publishToMqttCheckBox);
             resources.ApplyResources(this.displayTypeGroupBox, "displayTypeGroupBox");
+            // Five rows: Module(20) Device(45) MQTT(70) Momentary(103) Publish(128).
+            // Last row bottom ~145 + ~13 px padding.
+            this.displayTypeGroupBox.Height = 158;
             this.displayTypeGroupBox.Name = "displayTypeGroupBox";
             this.displayTypeGroupBox.TabStop = false;
             // 
@@ -201,8 +204,11 @@
             this.momentaryButtonCheckBox.Name = "momentaryButtonCheckBox";
             this.momentaryButtonCheckBox.UseVisualStyleBackColor = true;
             this.momentaryButtonCheckBox.Visible = false;
-            // Position right under inputTypeComboBox; resx may override.
-            this.momentaryButtonCheckBox.Location = new System.Drawing.Point(this.inputTypeComboBox.Left, this.inputTypeComboBox.Bottom + 6);
+            // MQTT row sits at Y=70 (height ~21). Add an extra 8 px of breathing room before
+            // the checkbox group so the section break between editors and toggles is visible.
+            // Pitch becomes: Module 20 -> Device 45 (+25) -> MQTT 70 (+25) -> Momentary 103
+            // (+33) -> Publish 128 (+25).
+            this.momentaryButtonCheckBox.Location = new System.Drawing.Point(this.inputTypeComboBox.Left, this.inputTypeComboBox.Top + 58);
             this.momentaryButtonCheckBox.Text = "Momentary (push-button) \u2014 uncheck for latching/toggle switch";
             // 
             // publishToMqttCheckBox
@@ -216,7 +222,8 @@
             this.publishToMqttCheckBox.CheckState = System.Windows.Forms.CheckState.Unchecked;
             this.publishToMqttCheckBox.Name = "publishToMqttCheckBox";
             this.publishToMqttCheckBox.UseVisualStyleBackColor = true;
-            this.publishToMqttCheckBox.Location = new System.Drawing.Point(this.momentaryButtonCheckBox.Left, this.momentaryButtonCheckBox.Bottom + 4);
+            // Same 25 px pitch as the rows above (Momentary=95 -> Publish=120).
+            this.publishToMqttCheckBox.Location = new System.Drawing.Point(this.momentaryButtonCheckBox.Left, this.momentaryButtonCheckBox.Top + 25);
             this.publishToMqttCheckBox.Text = "Publish to MQTT (expose to Home Assistant)";
             // 
             // displayTabTextBox

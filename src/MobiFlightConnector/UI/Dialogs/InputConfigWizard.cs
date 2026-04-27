@@ -658,21 +658,28 @@ namespace MobiFlight.UI.Dialogs
             var parent = inputTypeComboBox.Parent;
             if (parent == null) return;
 
-            var anchorTop = inputTypeComboBox.Top;
-            var labelTop = Math.Max(0, anchorTop - 18);
+            // Lay the MQTT helper controls out on a NEW row directly below Device using the
+            // SAME 25 px row pitch as Module->Device (defined by inputModuleNameComboBox.Y=20
+            // and inputTypeComboBox.Y=45 in the .resx). Mirroring the existing pitch keeps
+            // all rows visually equidistant.
+            var rowTop = inputTypeComboBox.Top + 25;            // Module=20, Device=45, MQTT=70
+            var labelTop = rowTop + 3;                          // labels visually centered against combos
+            var leftEdge = inputTypeComboBox.Left;              // align with Module/Device combos (X=98)
 
             mqttTypeLabel = new System.Windows.Forms.Label
             {
                 Text = "MQTT Type",
                 AutoSize = true,
-                Location = new System.Drawing.Point(inputTypeComboBox.Right + 8, labelTop),
+                TextAlign = System.Drawing.ContentAlignment.MiddleRight,
+                // Same right-edge as "Device" label so the column alignment stays consistent.
+                Location = new System.Drawing.Point(leftEdge - 70, labelTop),
                 Visible = false,
             };
 
             mqttTypeComboBox = new System.Windows.Forms.ComboBox
             {
                 DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList,
-                Location = new System.Drawing.Point(inputTypeComboBox.Right + 8, anchorTop),
+                Location = new System.Drawing.Point(leftEdge, rowTop),
                 Width = 110,
                 Visible = false,
                 DisplayMember = "Label",
@@ -691,14 +698,15 @@ namespace MobiFlight.UI.Dialogs
             {
                 Text = "Label",
                 AutoSize = true,
-                Location = new System.Drawing.Point(mqttTypeComboBox.Right + 8, labelTop),
+                Location = new System.Drawing.Point(mqttTypeComboBox.Right + 16, labelTop),
                 Visible = false,
             };
 
             mqttLabelTextBox = new System.Windows.Forms.TextBox
             {
-                Location = new System.Drawing.Point(mqttTypeComboBox.Right + 8, anchorTop),
-                Width = 160,
+                // Position after the Label caption ("Label" is ~33 px wide at default font).
+                Location = new System.Drawing.Point(mqttTypeComboBox.Right + 16 + 38, rowTop),
+                Width = 200,
                 Visible = false,
             };
 
@@ -745,6 +753,19 @@ namespace MobiFlight.UI.Dialogs
             mqttTypeComboBox.Visible = visible;
             mqttTopicLabel.Visible = visible;
             mqttLabelTextBox.Visible = visible;
+
+            // The MQTT inline editor (Type combo + Label textbox) is positioned to the right
+            // of inputTypeComboBox at roughly the same X range as the Scan-for-input button
+            // (X 388..473) and the Board-not-connected warning (X 385..653). For non-MQTT
+            // controllers those two are useful, but for MQTT they make no sense AND their
+            // text/buttons end up visually overlapping the dynamically-added MQTT labels
+            // ("MQTT Type", "Label"), causing fragments like "p" / "el" to leak around the
+            // Scan button. So we hide them whenever MQTT is the active controller.
+            ScanForInputButton.Visible = !visible;
+            if (visible)
+            {
+                DeviceNotAvailableWarningLabel.Visible = false;
+            }
 
             // When MQTT is selected, allow free-text entry of new topics. Otherwise enforce
             // pick-from-list semantics like the rest of the controllers expect.
