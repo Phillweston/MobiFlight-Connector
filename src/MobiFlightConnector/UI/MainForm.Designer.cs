@@ -55,6 +55,13 @@
             this.toolStripStatusLabel3 = new System.Windows.Forms.ToolStripStatusLabel();
             this.SimConnectionIconStatusToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.simStatusToolStripDropDownButton1 = new System.Windows.Forms.ToolStripDropDownButton();
+            this.dividerHomeAssistantToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.HomeAssistantToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.toolStripStatusLabelHomeAssistantSpacer = new System.Windows.Forms.ToolStripStatusLabel();
+            this.HomeAssistantConnectionIconStatusToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.mqttStatusToolStripDropDownButton = new System.Windows.Forms.ToolStripDropDownButton();
+            this.MqttServerRunningToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.HomeAssistantToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.SimProcessDetectedToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.separatorToolStripMenuItem = new System.Windows.Forms.ToolStripSeparator();
             this.FsuipcToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -168,6 +175,11 @@
             this.toolStripStatusLabel3,
             this.SimConnectionIconStatusToolStripStatusLabel,
             this.simStatusToolStripDropDownButton1,
+            this.dividerHomeAssistantToolStripStatusLabel,
+            this.HomeAssistantToolStripStatusLabel,
+            this.toolStripStatusLabelHomeAssistantSpacer,
+            this.HomeAssistantConnectionIconStatusToolStripStatusLabel,
+            this.mqttStatusToolStripDropDownButton,
             this.toolStripStatusLabel1,
             this.toolStripAircraftDropDownButton,
             this.toolStripStatusLabel2,
@@ -272,6 +284,49 @@
             this.proSimToolStripMenuItem});
             resources.ApplyResources(this.simStatusToolStripDropDownButton1, "simStatusToolStripDropDownButton1");
             this.simStatusToolStripDropDownButton1.Name = "simStatusToolStripDropDownButton1";
+            // 
+            // dividerHomeAssistantToolStripStatusLabel
+            // 
+            this.dividerHomeAssistantToolStripStatusLabel.BorderSides = System.Windows.Forms.ToolStripStatusLabelBorderSides.Right;
+            this.dividerHomeAssistantToolStripStatusLabel.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.None;
+            this.dividerHomeAssistantToolStripStatusLabel.Name = "dividerHomeAssistantToolStripStatusLabel";
+            resources.ApplyResources(this.dividerHomeAssistantToolStripStatusLabel, "dividerHomeAssistantToolStripStatusLabel");
+            // 
+            // HomeAssistantToolStripStatusLabel
+            // 
+            this.HomeAssistantToolStripStatusLabel.Name = "HomeAssistantToolStripStatusLabel";
+            resources.ApplyResources(this.HomeAssistantToolStripStatusLabel, "HomeAssistantToolStripStatusLabel");
+            // 
+            // toolStripStatusLabelHomeAssistantSpacer
+            // 
+            this.toolStripStatusLabelHomeAssistantSpacer.Name = "toolStripStatusLabelHomeAssistantSpacer";
+            resources.ApplyResources(this.toolStripStatusLabelHomeAssistantSpacer, "toolStripStatusLabelHomeAssistantSpacer");
+            // 
+            // HomeAssistantConnectionIconStatusToolStripStatusLabel
+            // 
+            this.HomeAssistantConnectionIconStatusToolStripStatusLabel.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.HomeAssistantConnectionIconStatusToolStripStatusLabel.Image = global::MobiFlight.Properties.Resources.warning;
+            this.HomeAssistantConnectionIconStatusToolStripStatusLabel.Name = "HomeAssistantConnectionIconStatusToolStripStatusLabel";
+            resources.ApplyResources(this.HomeAssistantConnectionIconStatusToolStripStatusLabel, "HomeAssistantConnectionIconStatusToolStripStatusLabel");
+            // 
+            // mqttStatusToolStripDropDownButton
+            // 
+            this.mqttStatusToolStripDropDownButton.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.None;
+            this.mqttStatusToolStripDropDownButton.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.MqttServerRunningToolStripMenuItem,
+            this.HomeAssistantToolStripMenuItem});
+            resources.ApplyResources(this.mqttStatusToolStripDropDownButton, "mqttStatusToolStripDropDownButton");
+            this.mqttStatusToolStripDropDownButton.Name = "mqttStatusToolStripDropDownButton";
+            // 
+            // MqttServerRunningToolStripMenuItem
+            // 
+            this.MqttServerRunningToolStripMenuItem.Name = "MqttServerRunningToolStripMenuItem";
+            resources.ApplyResources(this.MqttServerRunningToolStripMenuItem, "MqttServerRunningToolStripMenuItem");
+            // 
+            // HomeAssistantToolStripMenuItem
+            // 
+            this.HomeAssistantToolStripMenuItem.Name = "HomeAssistantToolStripMenuItem";
+            resources.ApplyResources(this.HomeAssistantToolStripMenuItem, "HomeAssistantToolStripMenuItem");
             // 
             // SimProcessDetectedToolStripMenuItem
             // 
@@ -506,6 +561,13 @@
         private System.Windows.Forms.ToolStripStatusLabel SimStatusToolStripStatusLabel;
         private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel3;
         private System.Windows.Forms.ToolStripDropDownButton simStatusToolStripDropDownButton1;
+        private System.Windows.Forms.ToolStripStatusLabel dividerHomeAssistantToolStripStatusLabel;
+        private System.Windows.Forms.ToolStripStatusLabel HomeAssistantToolStripStatusLabel;
+        private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabelHomeAssistantSpacer;
+        private System.Windows.Forms.ToolStripStatusLabel HomeAssistantConnectionIconStatusToolStripStatusLabel;
+        private System.Windows.Forms.ToolStripDropDownButton mqttStatusToolStripDropDownButton;
+        private System.Windows.Forms.ToolStripMenuItem MqttServerRunningToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem HomeAssistantToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem FsuipcToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem simConnectToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem SimProcessDetectedToolStripMenuItem;

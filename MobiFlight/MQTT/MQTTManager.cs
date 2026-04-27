@@ -20,7 +20,33 @@ namespace MobiFlight
         public static readonly string MobiFlightCurrentAircraftTopic = $"{MobiFlightTopicPrefix}/state/currentAircraft";
 
         public event Func<MqttClientConnectedEventArgs, Task> ConnectedAsync;
+        public event Func<MqttClientDisconnectedEventArgs, Task> DisconnectedAsync;
         public event ButtonEventHandler OnButtonPressed;
+
+        /// <summary>
+        /// True if the underlying MQTT client is currently connected to the broker.
+        /// </summary>
+        public bool IsConnected => mqttClient?.IsConnected ?? false;
+
+        /// <summary>
+        /// Returns "host:port" of the broker the manager is connected (or last attempted to connect) to,
+        /// or an empty string if no settings are loaded yet. Used by the UI to populate the status bar tooltip.
+        /// </summary>
+        public string BrokerEndpoint
+        {
+            get
+            {
+                try
+                {
+                    var s = MQTTServerSettings.Load();
+                    return s == null ? string.Empty : $"{s.Address}:{s.Port}";
+                }
+                catch
+                {
+                    return string.Empty;
+                }
+            }
+        }
 
         private Dictionary<string, MQTTInput> Inputs = new Dictionary<string, MQTTInput>();
 
@@ -327,6 +353,7 @@ namespace MobiFlight
             // Add incoming message handler prior to connecting so queued events are processed.
             mqttClient.ApplicationMessageReceivedAsync += MqttClient_ApplicationMessageReceivedAsync;
             mqttClient.ConnectedAsync += MqttClient_ConnectedAsync;
+            mqttClient.DisconnectedAsync += MqttClient_DisconnectedAsync;
 
             // This will throw an exception if the server is not available.
             // The result from this message returns additional data which was sent 
@@ -405,6 +432,17 @@ namespace MobiFlight
             // discovery messages we sent in this session, so always (re)publish them.
             publishedDiscoveryTopics.Clear();
             await PublishHomeAssistantDiscoveryAsync();
+        }
+
+        /// <summary>
+        /// Event handler for when the MQTT client connection is dropped (network error, broker
+        /// shutdown, explicit disconnect, etc.). Forwards a DisconnectedAsync event so the UI
+        /// (e.g. the bottom status bar Home Assistant indicator) can react.
+        /// </summary>
+        private Task MqttClient_DisconnectedAsync(MqttClientDisconnectedEventArgs arg)
+        {
+            DisconnectedAsync?.Invoke(arg);
+            return Task.CompletedTask;
         }
 
         /// <summary>

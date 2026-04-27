@@ -518,11 +518,13 @@ namespace MobiFlight.UI
 
             cmdLineParams = new CmdLineParams(Environment.GetCommandLineArgs());
             InitializeExecutionManager();
+            HookMqttManagerEvents();
 
             ControllerBindingService = new ControllerBindingService(execManager);
 
             connectedDevicesToolStripDropDownButton.DropDownDirection = ToolStripDropDownDirection.AboveRight;
             simStatusToolStripDropDownButton1.DropDownDirection = ToolStripDropDownDirection.AboveRight;
+            mqttStatusToolStripDropDownButton.DropDownDirection = ToolStripDropDownDirection.AboveRight;
             toolStripAircraftDropDownButton.DropDownDirection = ToolStripDropDownDirection.AboveRight;
 
             SimConnectionIconStatusToolStripStatusLabel.Image = Properties.Resources.warning;
@@ -532,6 +534,11 @@ namespace MobiFlight.UI
             proSimToolStripMenuItem.Image = Properties.Resources.warning;
             xPlaneDirectToolStripMenuItem.Image = Properties.Resources.warning;
             toolStripConnectedDevicesIcon.Image = Properties.Resources.warning;
+
+            // Initial Home Assistant / MQTT broker connection indicator. The actual state
+            // is driven by MQTTManager.ConnectedAsync / DisconnectedAsync events wired up
+            // in InitializeExecutionManager(). Show as disabled when HA discovery is off.
+            UpdateHomeAssistantStatusIcon();
 
             updateNotifyContextMenu(false);
 
@@ -611,6 +618,93 @@ namespace MobiFlight.UI
             execManager.StartMidiBoardManager();
 
             execManager.SettingsDialogRequested += ExecManager_SettingsDialogRequested;
+        }
+
+        /// <summary>
+        /// Wires status-bar updates to MQTT broker connection state changes. The Home
+        /// Assistant indicator reflects whether the MobiFlight ⇄ HA bridge is live, which
+        /// requires both that HA discovery is enabled in MQTT settings and that the
+        /// underlying MQTT broker is currently reachable.
+        /// </summary>
+        private void UpdateHomeAssistantStatusIcon()
+        {
+            try
+            {
+                var settings = MobiFlight.MQTTServerSettings.Load();
+                var mqtt = execManager?.GetMQTTManager();
+                var enabled = settings?.HomeAssistantDiscoveryEnabled ?? false;
+                var connected = mqtt?.IsConnected ?? false;
+                var endpoint = mqtt?.BrokerEndpoint ?? string.Empty;
+
+                Image icon;
+                string tooltip;
+                Image haIcon;
+                string haText;
+                Image brokerIcon;
+                string brokerText;
+                if (!enabled)
+                {
+                    icon = Properties.Resources.disabled;
+                    tooltip = "Home Assistant discovery disabled in MQTT settings";
+                    haIcon = Properties.Resources.disabled;
+                    haText = "Home Assistant (discovery disabled)";
+                    brokerIcon = connected ? Properties.Resources.check : Properties.Resources.warning;
+                    brokerText = connected
+                        ? (string.IsNullOrEmpty(endpoint) ? "MQTT Server connected" : $"MQTT Server: {endpoint}")
+                        : "No MQTT Server Running";
+                }
+                else if (connected)
+                {
+                    icon = Properties.Resources.check;
+                    tooltip = string.IsNullOrEmpty(endpoint)
+                        ? "Home Assistant: MQTT broker connected"
+                        : $"Home Assistant: connected to {endpoint}";
+                    haIcon = Properties.Resources.check;
+                    haText = "Home Assistant";
+                    brokerIcon = Properties.Resources.check;
+                    brokerText = string.IsNullOrEmpty(endpoint) ? "MQTT Server connected" : $"MQTT Server: {endpoint}";
+                }
+                else
+                {
+                    icon = Properties.Resources.warning;
+                    tooltip = string.IsNullOrEmpty(endpoint)
+                        ? "Home Assistant: MQTT broker disconnected"
+                        : $"Home Assistant: not connected to {endpoint}";
+                    haIcon = Properties.Resources.warning;
+                    haText = "Home Assistant";
+                    brokerIcon = Properties.Resources.warning;
+                    brokerText = "No MQTT Server Running";
+                }
+
+                HomeAssistantConnectionIconStatusToolStripStatusLabel.Image = icon;
+                HomeAssistantConnectionIconStatusToolStripStatusLabel.ToolTipText = tooltip;
+                HomeAssistantToolStripStatusLabel.ToolTipText = tooltip;
+                MqttServerRunningToolStripMenuItem.Image = brokerIcon;
+                MqttServerRunningToolStripMenuItem.Text = brokerText;
+                HomeAssistantToolStripMenuItem.Image = haIcon;
+                HomeAssistantToolStripMenuItem.Text = haText;
+            }
+            catch (Exception ex)
+            {
+                Log.Instance.log($"MainForm: Failed to refresh HA status icon: {ex.Message}", LogSeverity.Debug);
+            }
+        }
+
+        private void HookMqttManagerEvents()
+        {
+            var mqtt = execManager?.GetMQTTManager();
+            if (mqtt == null) return;
+
+            mqtt.ConnectedAsync += _ =>
+            {
+                BeginInvoke((Action)UpdateHomeAssistantStatusIcon);
+                return Task.CompletedTask;
+            };
+            mqtt.DisconnectedAsync += _ =>
+            {
+                BeginInvoke((Action)UpdateHomeAssistantStatusIcon);
+                return Task.CompletedTask;
+            };
         }
 
         private void ExecManager_OnProjectChanged(object sender, Project e)

@@ -6752,6 +6752,39 @@
   <data name="SimConnectionIconStatusToolStripStatusLabel.Text" xml:space="preserve">
     <value>Not Found</value>
   </data>
+  <data name="dividerHomeAssistantToolStripStatusLabel.Size" type="System.Drawing.Size, System.Drawing">
+    <value>4, 17</value>
+  </data>
+  <data name="HomeAssistantToolStripStatusLabel.Size" type="System.Drawing.Size, System.Drawing">
+    <value>37, 17</value>
+  </data>
+  <data name="HomeAssistantToolStripStatusLabel.Text" xml:space="preserve">
+    <value>MQTT</value>
+  </data>
+  <data name="toolStripStatusLabelHomeAssistantSpacer.Size" type="System.Drawing.Size, System.Drawing">
+    <value>0, 17</value>
+  </data>
+  <data name="HomeAssistantConnectionIconStatusToolStripStatusLabel.Size" type="System.Drawing.Size, System.Drawing">
+    <value>16, 17</value>
+  </data>
+  <data name="HomeAssistantConnectionIconStatusToolStripStatusLabel.Text" xml:space="preserve">
+    <value>Disconnected</value>
+  </data>
+  <data name="mqttStatusToolStripDropDownButton.Size" type="System.Drawing.Size, System.Drawing">
+    <value>13, 20</value>
+  </data>
+  <data name="MqttServerRunningToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
+    <value>211, 22</value>
+  </data>
+  <data name="MqttServerRunningToolStripMenuItem.Text" xml:space="preserve">
+    <value>No MQTT Server Running</value>
+  </data>
+  <data name="HomeAssistantToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
+    <value>211, 22</value>
+  </data>
+  <data name="HomeAssistantToolStripMenuItem.Text" xml:space="preserve">
+    <value>Home Assistant</value>
+  </data>
   <data name="SimProcessDetectedToolStripMenuItem.Size" type="System.Drawing.Size, System.Drawing">
     <value>180, 22</value>
   </data>
