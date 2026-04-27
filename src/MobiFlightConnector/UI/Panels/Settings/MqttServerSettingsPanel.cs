@@ -40,7 +40,9 @@ namespace MobiFlight.UI.Panels.Settings
         {
             settings.Address = addressTextBox.Text;
             settings.EncryptConnection = encryptConectionCheckbox.Checked;
-            settings.Port = Convert.ToInt32(settings.Port);
+            // Read the value from the textbox – previously this read settings.Port back
+            // into itself, silently discarding any port edit the user made.
+            if (int.TryParse(portTextBox.Text, out var port)) settings.Port = port;
             settings.Username = usernameTextBox.Text;
             settings.ValidateCertificate = validateCertificateCheckbox.Checked;
 
@@ -75,9 +77,27 @@ namespace MobiFlight.UI.Panels.Settings
             passwordChanged = true;
         }
 
+        // Standard MQTT ports per IANA: 1883 plaintext, 8883 over TLS.
+        private const int DefaultPlainPort = 1883;
+        private const int DefaultTlsPort = 8883;
+
         private void encryptConectionCheckbox_CheckedChanged(object sender, EventArgs e)
         {
             validateCertificateCheckbox.Enabled = encryptConectionCheckbox.Checked;
+
+            // Auto-toggle the port between the two IANA defaults so users get the right
+            // one out of the box. Only do this when the current value is exactly one of
+            // the two well-known defaults; if the user typed a custom port (e.g. 1884 or
+            // a corporate proxy port) we leave it alone so we don't clobber their input.
+            if (!int.TryParse(portTextBox.Text, out var current)) return;
+            if (encryptConectionCheckbox.Checked && current == DefaultPlainPort)
+            {
+                portTextBox.Text = DefaultTlsPort.ToString();
+            }
+            else if (!encryptConectionCheckbox.Checked && current == DefaultTlsPort)
+            {
+                portTextBox.Text = DefaultPlainPort.ToString();
+            }
         }
 
         private void haDiscoveryEnabledCheckbox_CheckedChanged(object sender, EventArgs e)
