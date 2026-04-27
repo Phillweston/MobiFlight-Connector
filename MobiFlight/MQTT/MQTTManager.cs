@@ -24,6 +24,16 @@ namespace MobiFlight
 
         private Dictionary<string, MQTTInput> Inputs = new Dictionary<string, MQTTInput>();
 
+        // Reverse-direction subscriptions: topics that HA (or any controller) publishes TO
+        // us so we can drive a hardware-backed input via MQTT. Keyed by full topic, e.g.
+        //   "<topic>/set"     -> latching button toggle
+        //   "<topic>/inc/set" -> encoder increment
+        //   "<topic>/dec/set" -> encoder decrement
+        // Kept separate from <see cref="Inputs"/> so the MQTT-controller flow (which uses
+        // the bare topic) is unaffected and we can dispatch to the right config item with
+        // the original hardware controller's serial/label preserved.
+        private Dictionary<string, ReverseInput> reverseInputs = new Dictionary<string, ReverseInput>();
+
         private MqttFactory mqttFactory;
         private IMqttClient mqttClient;
         private readonly Dictionary<string, string> outputCache = new Dictionary<string, string>();
@@ -108,6 +118,7 @@ namespace MobiFlight
             currentProject = project;
 
             var newInputs = new Dictionary<string, MQTTInput>();
+            var newReverse = new Dictionary<string, ReverseInput>();
             if (project?.ConfigFiles != null)
             {
                 foreach (var file in project.ConfigFiles)
@@ -115,33 +126,73 @@ namespace MobiFlight
                     if (file?.ConfigItems == null) continue;
                     foreach (var item in file.ConfigItems.OfType<InputConfigItem>())
                     {
-                        if (!IsMQTTSerial(item.Controller?.Serial)) continue;
-
-                        // Topic field (DeviceName) may be empty: fall back to a topic
-                        // auto-derived from the config Name (Plan B – default-fill).
-                        var topic = MqttTopics.ForInput(item);
-                        if (string.IsNullOrWhiteSpace(topic)) continue;
-
-                        var deviceType = MapInputDeviceType(item.DeviceType);
-                        if (!deviceType.HasValue) continue;
-
-                        // Last write wins on duplicate topics; the same topic shared by
-                        // multiple input configs is intentionally collapsed to a single
-                        // subscription.
-                        newInputs[topic] = new MQTTInput
+                        // MQTT-controller items: forward subscription to the user-defined topic.
+                        if (IsMQTTSerial(item.Controller?.Serial))
                         {
-                            Type = deviceType.Value,
-                            Label = topic
-                        };
+                            // Topic field (DeviceName) may be empty: fall back to a topic
+                            // auto-derived from the config Name (Plan B – default-fill).
+                            var topic = MqttTopics.ForInput(item);
+                            if (string.IsNullOrWhiteSpace(topic)) continue;
+
+                            var deviceType = MapInputDeviceType(item.DeviceType);
+                            if (!deviceType.HasValue) continue;
+
+                            // Last write wins on duplicate topics; the same topic shared by
+                            // multiple input configs is intentionally collapsed to a single
+                            // subscription.
+                            newInputs[topic] = new MQTTInput
+                            {
+                                Type = deviceType.Value,
+                                Label = topic
+                            };
+                            continue;
+                        }
+
+                        // Hardware items: register reverse-direction command topics so HA
+                        // (or any external system) can drive the input back through us.
+                        // Only do this when the user opted the input in to MQTT publishing
+                        // - otherwise no HA entity exists for the topic in the first place.
+                        if (!item.Active) continue;
+                        if (!item.PublishToMQTT) continue;
+                        var pubTopic = MqttTopics.ForInputPublish(item);
+                        if (string.IsNullOrWhiteSpace(pubTopic)) continue;
+
+                        if (item.DeviceType == InputConfigItem.TYPE_BUTTON && !item.MomentaryButton)
+                        {
+                            newReverse[$"{pubTopic}/set"] = new ReverseInput
+                            {
+                                Kind = ReverseInputKind.ButtonSet,
+                                Topic = $"{pubTopic}/set",
+                                Config = item
+                            };
+                        }
+                        else if (item.DeviceType == InputConfigItem.TYPE_ENCODER)
+                        {
+                            newReverse[$"{pubTopic}/inc/set"] = new ReverseInput
+                            {
+                                Kind = ReverseInputKind.EncoderInc,
+                                Topic = $"{pubTopic}/inc/set",
+                                Config = item
+                            };
+                            newReverse[$"{pubTopic}/dec/set"] = new ReverseInput
+                            {
+                                Kind = ReverseInputKind.EncoderDec,
+                                Topic = $"{pubTopic}/dec/set",
+                                Config = item
+                            };
+                        }
                     }
                 }
             }
 
-            var oldTopics = new HashSet<string>(Inputs?.Keys ?? Enumerable.Empty<string>());
-            var newTopics = new HashSet<string>(newInputs.Keys);
+            // Reconcile both maps in a single sub/unsub pass so we don't churn the broker.
+            var oldTopics = new HashSet<string>((Inputs?.Keys ?? Enumerable.Empty<string>())
+                .Concat(reverseInputs?.Keys ?? Enumerable.Empty<string>()));
+            var newTopics = new HashSet<string>(newInputs.Keys.Concat(newReverse.Keys));
             Inputs = newInputs;
+            reverseInputs = newReverse;
 
-            Log.Instance.log($"MQTT: Synced {Inputs.Count} input topic(s) from project.", LogSeverity.Debug);
+            Log.Instance.log($"MQTT: Synced {Inputs.Count} input topic(s) and {reverseInputs.Count} reverse-command topic(s) from project.", LogSeverity.Debug);
 
             if (mqttClient?.IsConnected ?? false)
             {
@@ -306,12 +357,26 @@ namespace MobiFlight
             try
             {
                 var mqttSubscribeOptions = mqttFactory.CreateSubscribeOptionsBuilder();
+                var subscribed = false;
 
                 foreach (var input in Inputs)
                 {
                     Log.Instance.log($"MQTT: Subscribing to {input.Key}", LogSeverity.Debug);
                     mqttSubscribeOptions.WithTopicFilter(f => { f.WithTopic(input.Key); });
+                    subscribed = true;
                 }
+
+                // Reverse-direction command topics live in their own dictionary but share
+                // the same subscription channel - the dispatcher distinguishes by looking
+                // up the incoming topic in both maps.
+                foreach (var rev in reverseInputs)
+                {
+                    Log.Instance.log($"MQTT: Subscribing to reverse-command topic {rev.Key}", LogSeverity.Debug);
+                    mqttSubscribeOptions.WithTopicFilter(f => { f.WithTopic(rev.Key); });
+                    subscribed = true;
+                }
+
+                if (!subscribed) return;
 
                 var response = await mqttClient.SubscribeAsync(mqttSubscribeOptions.Build(), CancellationToken.None);
 
@@ -350,16 +415,25 @@ namespace MobiFlight
         /// <returns>A task that completes once the received message is processed.</returns>
         private Task MqttClient_ApplicationMessageReceivedAsync(MqttApplicationMessageReceivedEventArgs arg)
         {
-            var input = Inputs[arg.ApplicationMessage.Topic];
+            var topic = arg.ApplicationMessage.Topic;
+            var payloadString = System.Text.Encoding.UTF8.GetString(arg.ApplicationMessage.PayloadSegment.ToArray());
 
-            if (input == null)
+            // Reverse-direction commands (HA -> hardware input) take precedence: they live
+            // on /set-suffixed topics that are distinct from the parent state topic the
+            // hardware input publishes to, so there's no overlap with the Inputs map.
+            if (reverseInputs != null && reverseInputs.TryGetValue(topic, out var reverse))
             {
-                Log.Instance.log($"MQTT: Received an incoming message for {arg.ApplicationMessage.Topic} but it's not in the list of topics being watched. This should never happen.", LogSeverity.Error);
+                DispatchReverseCommand(reverse, payloadString);
+                return Task.CompletedTask;
+            }
+
+            if (!Inputs.TryGetValue(topic, out var input) || input == null)
+            {
+                Log.Instance.log($"MQTT: Received an incoming message for {topic} but it's not in the list of topics being watched. This should never happen.", LogSeverity.Error);
                 return Task.CompletedTask;
             }
 
             // Absolute nonsense to parse the incoming message value as a number.
-            var payloadString = System.Text.Encoding.UTF8.GetString(arg.ApplicationMessage.PayloadSegment.ToArray());
             if (int.TryParse(payloadString, out int value))
             {
                 // All device types share these three properties so set them first.
@@ -383,24 +457,136 @@ namespace MobiFlight
                 }
                 else
                 {
-                    Log.Instance.log($"MQTT: Received incoming message {arg.ApplicationMessage.Topic} for a type that isn't understhood. This should never happen.", LogSeverity.Error);
+                    Log.Instance.log($"MQTT: Received incoming message {topic} for a type that isn't understhood. This should never happen.", LogSeverity.Error);
                     return Task.CompletedTask;
                 }
 
-                Log.Instance.log($"MQTT: Received incoming message: {arg.ApplicationMessage.Topic} {value}", LogSeverity.Debug);
-                OnButtonPressed?.Invoke(null, eventArgs);
+                Log.Instance.log($"MQTT: Received incoming message: {topic} {value}", LogSeverity.Debug);
+                // sender = this so ExecutionManager can detect the loopback origin and
+                // avoid republishing the same event back to MQTT.
+                OnButtonPressed?.Invoke(this, eventArgs);
             }
             else
             {
-                Log.Instance.log($"MQTT: Unable to parse {payloadString} from {arg.ApplicationMessage.Topic} as a number.", LogSeverity.Error);
+                Log.Instance.log($"MQTT: Unable to parse {payloadString} from {topic} as a number.", LogSeverity.Error);
             }
 
             return Task.CompletedTask;
         }
 
+        /// <summary>
+        /// Translates a reverse-direction command (HA -> hardware) into the equivalent
+        /// MobiFlight input event(s) so the configured InputAction fires exactly as if
+        /// the physical control had been actuated. Latching button toggles emit a press
+        /// followed by a release; encoder inc/dec emit a single tick in the matching
+        /// direction.
+        /// </summary>
+        private void DispatchReverseCommand(ReverseInput reverse, string payload)
+        {
+            if (reverse?.Config == null) return;
+
+            // For the latching switch we only act on "1"; an explicit "0" would otherwise
+            // cause a phantom release-without-press when HA echoes the off state. The
+            // InputAction itself is responsible for whatever toggling the user wants.
+            switch (reverse.Kind)
+            {
+                case ReverseInputKind.ButtonSet:
+                    var pressed = payload == "1" || string.Equals(payload, "true", StringComparison.OrdinalIgnoreCase);
+                    EmitInputEvent(reverse.Config, DeviceType.Button,
+                        pressed ? (int)InputEvent.PRESS : (int)InputEvent.RELEASE);
+                    break;
+
+                case ReverseInputKind.EncoderInc:
+                    EmitInputEvent(reverse.Config, DeviceType.Encoder,
+                        (int)MobiFlightEncoder.InputEvent.RIGHT);
+                    break;
+
+                case ReverseInputKind.EncoderDec:
+                    EmitInputEvent(reverse.Config, DeviceType.Encoder,
+                        (int)MobiFlightEncoder.InputEvent.LEFT);
+                    break;
+            }
+        }
+
+        private void EmitInputEvent(InputConfigItem cfg, DeviceType type, int value)
+        {
+            var eventArgs = new InputEventArgs
+            {
+                // Use the hardware controller's serial/label so ExecutionManager's
+                // inputCache lookup hits the same row a physical actuation would.
+                Serial = cfg.Controller?.Serial ?? string.Empty,
+                DeviceLabel = cfg.DeviceName,
+                DeviceId = cfg.DeviceName,
+                Type = type,
+                Value = value
+            };
+
+            Log.Instance.log($"MQTT: Reverse-dispatch {type} value={value} for cfg \"{cfg.Name}\".", LogSeverity.Debug);
+            // sender = this so ExecutionManager skips the publish-back to prevent loops.
+            OnButtonPressed?.Invoke(this, eventArgs);
+        }
+
         public async void PublishCurrentAircraft(object _, string e)
         {
             await Publish(MQTTManager.MobiFlightCurrentAircraftTopic, e);
+        }
+
+        /// <summary>
+        /// Publishes the value of a hardware input event (button press/release, encoder
+        /// rotation, analog value) to MQTT so external systems (e.g. Home Assistant) can
+        /// react to physical panel changes.
+        ///
+        /// Topic is derived from the config Name via <see cref="MqttTopics.ForInputPublish"/>
+        /// so it stays in lock-step with the Home Assistant discovery state_topic. Buttons
+        /// publish as retained "1"/"0" so HA picks up the current state on (re)connect;
+        /// encoder ticks publish to <c>&lt;topic&gt;/inc</c> or <c>&lt;topic&gt;/dec</c> as
+        /// non-retained "1" pulses (rotation has no persistent state); analog values publish
+        /// the raw numeric value retained.
+        /// </summary>
+        /// <param name="cfg">The input config item that produced the event.</param>
+        /// <param name="e">The originating hardware event.</param>
+        public async Task PublishInputEvent(InputConfigItem cfg, InputEventArgs e)
+        {
+            if (cfg == null || e == null) return;
+            if (!mqttClient?.IsConnected ?? true) return;
+
+            // Per-input opt-in: only publish hardware events for inputs the user has
+            // explicitly ticked "Publish to MQTT" on, so we don't spam the broker (or
+            // HA dashboard) with every active input by default.
+            if (!cfg.PublishToMQTT) return;
+
+            var topic = MqttTopics.ForInputPublish(cfg);
+            if (string.IsNullOrWhiteSpace(topic)) return;
+
+            try
+            {
+                if (e.Type == DeviceType.Button)
+                {
+                    // Press = 1, release = 0. Retained so a (re)connecting subscriber sees
+                    // the current physical state without having to wait for the next event.
+                    var payload = e.Value == (int)InputEvent.RELEASE ? "0" : "1";
+                    await PublishRetainedRaw(topic, payload);
+                }
+                else if (e.Type == DeviceType.Encoder)
+                {
+                    // Encoder rotation has no resting state - fire a single "1" pulse on
+                    // the appropriate sub-topic so HA can trigger automations per tick.
+                    var dir = (e.Value == (int)MobiFlightEncoder.InputEvent.LEFT ||
+                               e.Value == (int)MobiFlightEncoder.InputEvent.LEFT_FAST)
+                                ? "dec" : "inc";
+                    await Publish($"{topic}/{dir}", "1");
+                }
+                else if (e.Type == DeviceType.AnalogInput)
+                {
+                    await PublishRetainedRaw(topic, e.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                }
+                // Other input types (shift register, multiplexer) deliberately not published -
+                // they share the underlying button semantics already handled above.
+            }
+            catch (Exception ex)
+            {
+                Log.Instance.log($"MQTT: PublishInputEvent failed for {topic}: {ex.Message}", LogSeverity.Error);
+            }
         }
 
         /// <summary>

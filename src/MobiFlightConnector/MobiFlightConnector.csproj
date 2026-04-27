@@ -893,6 +893,9 @@
     <Compile Include="..\..\MobiFlight\MQTT\MQTTManager.cs">
       <Link>MobiFlight\MQTT\MQTTManager.cs</Link>
     </Compile>
+    <Compile Include="..\..\MobiFlight\MQTT\ReverseInput.cs">
+      <Link>MobiFlight\MQTT\ReverseInput.cs</Link>
+    </Compile>
     <Compile Include="..\..\MobiFlight\MQTT\MQTTServerSettings.cs">
       <Link>MobiFlight\MQTT\MQTTServerSettings.cs</Link>
     </Compile>

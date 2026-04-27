@@ -47,6 +47,31 @@ namespace MobiFlight
         public string DeviceType { get; set; }
         public string DeviceName { get; set; }
 
+        /// <summary>
+        /// Behaviour hint for Button-type inputs when mirrored to Home Assistant:
+        /// <c>true</c>  = momentary push button (HA exposes as <c>binary_sensor</c>; physical
+        ///                press → on, release → off; HA cannot drive it back).
+        /// <c>false</c> = latching toggle/maintained switch (HA exposes as <c>switch</c> with a
+        ///                <c>command_topic</c> so HA toggles also fire the configured InputAction).
+        /// Defaults to <c>true</c> so projects authored before this field existed keep their
+        /// previous "momentary" semantics on load.
+        /// </summary>
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+        [System.ComponentModel.DefaultValue(true)]
+        public bool MomentaryButton { get; set; } = true;
+
+        /// <summary>
+        /// Per-input opt-in switch for mirroring this input over MQTT (and exposing it via
+        /// Home Assistant auto-discovery). Defaults to <c>false</c> so that enabling the
+        /// global HA Discovery setting on an existing project does NOT suddenly flood the
+        /// HA dashboard with every active input - users explicitly tick this on the inputs
+        /// they want to control from HA. MQTT-controller items (Controller.Serial == MQTT
+        /// pseudo-serial) ignore this flag because their MQTT topic IS their input source.
+        /// </summary>
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+        [System.ComponentModel.DefaultValue(false)]
+        public bool PublishToMQTT { get; set; } = false;
+
 
         public InputConfigItem()
         {
@@ -101,6 +126,25 @@ namespace MobiFlight
             {
                 DeviceType = reader["type"];
                 if (DeviceType == TYPE_ANALOG_OLD) DeviceType = TYPE_ANALOG;
+            }
+
+            // "momentary" attribute is optional; absence (legacy configs) keeps the field
+            // at its constructor default of true so behaviour doesn't change on load.
+            var momentaryAttr = reader["momentary"];
+            if (!string.IsNullOrEmpty(momentaryAttr) &&
+                bool.TryParse(momentaryAttr, out var momentaryParsed))
+            {
+                MomentaryButton = momentaryParsed;
+            }
+
+            // "publishToMqtt" attribute is also optional; absence keeps the field at its
+            // default of false so legacy projects don't auto-publish anything until the
+            // user explicitly opts each input in.
+            var publishAttr = reader["publishToMqtt"];
+            if (!string.IsNullOrEmpty(publishAttr) &&
+                bool.TryParse(publishAttr, out var publishParsed))
+            {
+                PublishToMQTT = publishParsed;
             }
 
             reader.Read(); // this should be the button or encoder
@@ -243,6 +287,19 @@ namespace MobiFlight
             writer.WriteAttributeString("name", this.DeviceName);
             writer.WriteAttributeString("type", this.DeviceType);
 
+            // Only emit when non-default to keep diffs small for existing projects that
+            // never touch the latching toggle.
+            if (!MomentaryButton)
+            {
+                writer.WriteAttributeString("momentary", MomentaryButton.ToString().ToLowerInvariant());
+            }
+
+            // Same idea: only persist when the user opted this input into MQTT publishing.
+            if (PublishToMQTT)
+            {
+                writer.WriteAttributeString("publishToMqtt", PublishToMQTT.ToString().ToLowerInvariant());
+            }
+
             if (this.DeviceType == TYPE_BUTTON && button != null)
             {
                 writer.WriteStartElement("button");
@@ -303,6 +360,8 @@ namespace MobiFlight
             this.Device = config.Device?.Clone() as IDeviceConfig;
             this.DeviceType = config.DeviceType?.Clone() as string;
             this.DeviceName = config.DeviceName?.Clone() as string;
+            this.MomentaryButton = config.MomentaryButton;
+            this.PublishToMQTT = config.PublishToMQTT;
         }
 
         public override object Clone()

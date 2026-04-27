@@ -1520,6 +1520,16 @@ namespace MobiFlight
                         e,
                         GetRefs(tuple.Item1.ConfigRefs))
                         ;
+
+                    // Mirror hardware-driven input events out to MQTT so external systems
+                    // (e.g. Home Assistant) can react to physical panel changes. Anti-loop:
+                    // when the event came from MQTTManager itself (either an MQTT-controller
+                    // input or a reverse-direction HA command) we do NOT echo it back, or
+                    // we'd create a feedback storm.
+                    if (!(sender is MQTTManager))
+                    {
+                        mqttManager.PublishInputEvent(tuple.Item1, e).Forget();
+                    }
                 }
                 catch (Exception ex)
                 {

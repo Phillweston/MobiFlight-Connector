@@ -45,6 +45,8 @@
             this.inputModuleNameComboBox = new System.Windows.Forms.ComboBox();
             this.inputTypeComboBoxLabel = new System.Windows.Forms.Label();
             this.inputTypeComboBox = new System.Windows.Forms.ComboBox();
+            this.momentaryButtonCheckBox = new System.Windows.Forms.CheckBox();
+            this.publishToMqttCheckBox = new System.Windows.Forms.CheckBox();
             this.displayTabTextBox = new System.Windows.Forms.TextBox();
             this.ButtonPanel = new System.Windows.Forms.Panel();
             this.button1 = new System.Windows.Forms.Button();
@@ -128,6 +130,8 @@
             this.displayTypeGroupBox.Controls.Add(this.inputModuleNameComboBox);
             this.displayTypeGroupBox.Controls.Add(this.inputTypeComboBoxLabel);
             this.displayTypeGroupBox.Controls.Add(this.inputTypeComboBox);
+            this.displayTypeGroupBox.Controls.Add(this.momentaryButtonCheckBox);
+            this.displayTypeGroupBox.Controls.Add(this.publishToMqttCheckBox);
             resources.ApplyResources(this.displayTypeGroupBox, "displayTypeGroupBox");
             this.displayTypeGroupBox.Name = "displayTypeGroupBox";
             this.displayTypeGroupBox.TabStop = false;
@@ -185,6 +189,35 @@
             resources.ApplyResources(this.inputTypeComboBox, "inputTypeComboBox");
             this.inputTypeComboBox.Name = "inputTypeComboBox";
             this.inputTypeComboBox.SelectedIndexChanged += new System.EventHandler(this.inputTypeComboBox_SelectedIndexChanged);
+            // 
+            // momentaryButtonCheckBox
+            // 
+            // Sits in displayTypeGroupBox alongside inputTypeComboBox so it lives next to the
+            // device-type selector. Visibility is toggled in code based on the selected type
+            // (Button only). Layout/text come from the .resx so it can be translated.
+            this.momentaryButtonCheckBox.AutoSize = true;
+            this.momentaryButtonCheckBox.Checked = true;
+            this.momentaryButtonCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.momentaryButtonCheckBox.Name = "momentaryButtonCheckBox";
+            this.momentaryButtonCheckBox.UseVisualStyleBackColor = true;
+            this.momentaryButtonCheckBox.Visible = false;
+            // Position right under inputTypeComboBox; resx may override.
+            this.momentaryButtonCheckBox.Location = new System.Drawing.Point(this.inputTypeComboBox.Left, this.inputTypeComboBox.Bottom + 6);
+            this.momentaryButtonCheckBox.Text = "Momentary (push-button) \u2014 uncheck for latching/toggle switch";
+            // 
+            // publishToMqttCheckBox
+            // 
+            // Per-input opt-in for mirroring this input out to MQTT (and exposing it via
+            // Home Assistant auto-discovery). Default off so enabling the global HA setting
+            // doesn't suddenly create dozens of unwanted entities. Always visible (not just
+            // for Buttons) because Encoders and Analog inputs can also be published.
+            this.publishToMqttCheckBox.AutoSize = true;
+            this.publishToMqttCheckBox.Checked = false;
+            this.publishToMqttCheckBox.CheckState = System.Windows.Forms.CheckState.Unchecked;
+            this.publishToMqttCheckBox.Name = "publishToMqttCheckBox";
+            this.publishToMqttCheckBox.UseVisualStyleBackColor = true;
+            this.publishToMqttCheckBox.Location = new System.Drawing.Point(this.momentaryButtonCheckBox.Left, this.momentaryButtonCheckBox.Bottom + 4);
+            this.publishToMqttCheckBox.Text = "Publish to MQTT (expose to Home Assistant)";
             // 
             // displayTabTextBox
             // 
@@ -295,5 +328,7 @@
         private Panels.Config.PreconditionPanel preconditionPanel;
         private System.Windows.Forms.Label DeviceNotAvailableWarningLabel;
         private System.Windows.Forms.Button ScanForInputButton;
+        private System.Windows.Forms.CheckBox momentaryButtonCheckBox;
+        private System.Windows.Forms.CheckBox publishToMqttCheckBox;
     }
 }

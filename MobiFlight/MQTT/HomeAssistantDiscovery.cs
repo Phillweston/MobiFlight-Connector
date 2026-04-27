@@ -60,18 +60,20 @@ namespace MobiFlight
                 {
                     if (item == null || !item.Active) continue;
 
-                    DiscoveryMessage message = null;
-
                     if (item is OutputConfigItem output)
                     {
-                        message = BuildOutput(output, prefix);
+                        var outMsg = BuildOutput(output, prefix);
+                        if (outMsg != null) result.Add(outMsg);
                     }
                     else if (item is InputConfigItem input)
                     {
-                        message = BuildInput(input, prefix);
+                        // An input may produce more than one HA entity (e.g. an encoder
+                        // expands to two button-style binary_sensors for inc/dec).
+                        foreach (var inMsg in BuildInput(input, prefix))
+                        {
+                            if (inMsg != null) result.Add(inMsg);
+                        }
                     }
-
-                    if (message != null) result.Add(message);
                 }
             }
 
@@ -114,56 +116,129 @@ namespace MobiFlight
             };
         }
 
-        private static DiscoveryMessage BuildInput(InputConfigItem input, string prefix)
+        private static IEnumerable<DiscoveryMessage> BuildInput(InputConfigItem input, string prefix)
         {
-            if (!MQTTManager.IsMQTTSerial(input.Controller?.Serial)) return null;
-            // Resolve through MqttTopics so the discovery state_topic matches the topic
-            // we actually subscribe to (including the auto-from-Name fallback).
-            var topic = MqttTopics.ForInput(input);
-            if (string.IsNullOrWhiteSpace(topic)) return null;
+            // Two source flavours of input items end up in HA discovery:
+            //   • MQTT-controller items: MobiFlight subscribes to the user-defined topic;
+            //     state is whatever the broker sends us. Topic resolved via ForInput.
+            //   • Hardware items (Mega, joystick, MIDI, ...): MobiFlight publishes physical
+            //     events to a Name-derived topic via PublishInputEvent. Topic resolved via
+            //     ForInputPublish so HA listens to exactly what we publish.
+            //
+            // Hardware items are gated behind the per-input "Publish to MQTT" opt-in so
+            // enabling the global HA Discovery toggle on an existing project doesn't
+            // suddenly flood the dashboard with every active input. MQTT-controller items
+            // are exempt because their MQTT topic IS their input source, so exposing them
+            // is the whole point of the entry.
+            var isMqttSourced = MQTTManager.IsMQTTSerial(input.Controller?.Serial);
+            if (!isMqttSourced && !input.PublishToMQTT) yield break;
 
-            string component;
-            JObject payload;
+            var topic = isMqttSourced
+                ? MqttTopics.ForInput(input)
+                : MqttTopics.ForInputPublish(input);
+
+            if (string.IsNullOrWhiteSpace(topic)) yield break;
+
             var uniqueId = MakeUniqueId(input.GUID);
+            var displayName = SafeName(input.Name, fallback: topic);
 
             if (input.DeviceType == InputConfigItem.TYPE_BUTTON)
             {
-                component = "binary_sensor";
-                payload = new JObject
+                if (input.MomentaryButton)
                 {
-                    ["name"] = SafeName(input.Name, fallback: topic),
-                    ["unique_id"] = uniqueId,
-                    ["object_id"] = uniqueId,
-                    ["state_topic"] = topic,
-                    // MobiFlight publishes "1" on press and "0" on release.
-                    ["payload_on"] = "1",
-                    ["payload_off"] = "0",
-                    ["device"] = BuildDeviceBlock()
-                };
+                    // Momentary push button: binary_sensor reflects the current physical
+                    // state (1=pressed, 0=released). HA can react to the press/release
+                    // edges but cannot drive the button back.
+                    var payload = new JObject
+                    {
+                        ["name"] = displayName,
+                        ["unique_id"] = uniqueId,
+                        ["object_id"] = uniqueId,
+                        ["state_topic"] = topic,
+                        ["payload_on"] = "1",
+                        ["payload_off"] = "0",
+                        ["device"] = BuildDeviceBlock()
+                    };
+                    yield return new DiscoveryMessage
+                    {
+                        Topic = $"{prefix}/binary_sensor/{DeviceNodeId}/{uniqueId}/config",
+                        Payload = payload.ToString(Formatting.None)
+                    };
+                }
+                else
+                {
+                    // Latching toggle: expose as `switch` so HA can both observe AND drive
+                    // the state. command_topic uses /set so MQTTManager can distinguish
+                    // commands from the retained state echo on the parent topic (otherwise
+                    // a self-publish would loop back as a command).
+                    var payload = new JObject
+                    {
+                        ["name"] = displayName,
+                        ["unique_id"] = uniqueId,
+                        ["object_id"] = uniqueId,
+                        ["state_topic"] = topic,
+                        ["command_topic"] = $"{topic}/set",
+                        ["payload_on"] = "1",
+                        ["payload_off"] = "0",
+                        ["state_on"] = "1",
+                        ["state_off"] = "0",
+                        ["optimistic"] = false,
+                        ["device"] = BuildDeviceBlock()
+                    };
+                    yield return new DiscoveryMessage
+                    {
+                        Topic = $"{prefix}/switch/{DeviceNodeId}/{uniqueId}/config",
+                        Payload = payload.ToString(Formatting.None)
+                    };
+                }
+            }
+            else if (input.DeviceType == InputConfigItem.TYPE_ENCODER)
+            {
+                // Rotary encoders have no resting state, so we expose two HA `button`
+                // entities (one per direction). Pressing the HA button publishes the
+                // configured payload to <topic>/inc/set or <topic>/dec/set, which
+                // MQTTManager translates back into an encoder tick. The /set suffix
+                // keeps HA→MF commands on a different topic than the MF→HA state pulses
+                // (<topic>/inc and <topic>/dec) to prevent the publish from looping back
+                // through our own subscription.
+                foreach (var dir in new[] { "inc", "dec" })
+                {
+                    var dirUid = $"{uniqueId}_{dir}";
+                    var dirPayload = new JObject
+                    {
+                        ["name"] = $"{displayName} ({dir})",
+                        ["unique_id"] = dirUid,
+                        ["object_id"] = dirUid,
+                        ["command_topic"] = $"{topic}/{dir}/set",
+                        ["payload_press"] = "1",
+                        ["device"] = BuildDeviceBlock()
+                    };
+                    yield return new DiscoveryMessage
+                    {
+                        Topic = $"{prefix}/button/{DeviceNodeId}/{dirUid}/config",
+                        Payload = dirPayload.ToString(Formatting.None)
+                    };
+                }
             }
             else if (input.DeviceType == InputConfigItem.TYPE_ANALOG)
             {
-                component = "sensor";
-                payload = new JObject
+                var payload = new JObject
                 {
-                    ["name"] = SafeName(input.Name, fallback: topic),
+                    ["name"] = displayName,
                     ["unique_id"] = uniqueId,
                     ["object_id"] = uniqueId,
                     ["state_topic"] = topic,
                     ["state_class"] = "measurement",
                     ["device"] = BuildDeviceBlock()
                 };
+                yield return new DiscoveryMessage
+                {
+                    Topic = $"{prefix}/sensor/{DeviceNodeId}/{uniqueId}/config",
+                    Payload = payload.ToString(Formatting.None)
+                };
             }
-            else
-            {
-                return null;
-            }
-
-            return new DiscoveryMessage
-            {
-                Topic = $"{prefix}/{component}/{DeviceNodeId}/{uniqueId}/config",
-                Payload = payload.ToString(Formatting.None)
-            };
+            // Other device types (shift register, multiplexer, NOTSET) are intentionally
+            // skipped: they're either redundant with Button semantics or have no state.
         }
 
         private static JObject BuildDeviceBlock()

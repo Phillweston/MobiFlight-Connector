@@ -319,6 +319,11 @@ namespace MobiFlight.UI.Dialogs
                 Log.Instance.log($"Exception on selecting item in input type ComboBox. {config.DeviceName}", LogSeverity.Error);
             }
 
+            // Reflect persisted momentary/latching choice. Visibility is reapplied later
+            // by inputTypeComboBox_SelectedIndexChanged based on the resolved device type.
+            momentaryButtonCheckBox.Checked = config.MomentaryButton;
+            publishToMqttCheckBox.Checked = config.PublishToMQTT;
+
             preconditionPanel.syncFromConfig(config);
 
             configRefPanel.syncFromConfig(config);
@@ -439,6 +444,16 @@ namespace MobiFlight.UI.Dialogs
             }
 
             config.Device = InputConfigItem.CreateInputDevice(config);
+
+            // Persist momentary/latching choice. Only meaningful for Button-type inputs;
+            // for everything else we force the safe default so the field doesn't carry a
+            // stale value when the user switches device types within the same dialog.
+            config.MomentaryButton = (currentInputType == DeviceType.Button)
+                ? momentaryButtonCheckBox.Checked
+                : true;
+
+            // Per-input MQTT publish opt-in is independent of device type.
+            config.PublishToMQTT = publishToMqttCheckBox.Checked;
 
             // Clear unused config objects after switching device type to prevent incorrect input event matching
             ClearUnusedConfigObjects(currentInputType);
@@ -874,6 +889,17 @@ namespace MobiFlight.UI.Dialogs
                 }
 
                 DeviceNotAvailableWarningLabel.Visible = (serial == "") && currentInputType != DeviceType.NotSet;
+
+                // Momentary/latching is meaningful only for plain Button-type inputs (it
+                // controls how the input is exposed to Home Assistant: binary_sensor vs
+                // switch). For all other device types the field is irrelevant, so hide it
+                // and reset to the safe default so a stale "false" doesn't leak into a
+                // freshly-saved encoder/analog/etc. config.
+                momentaryButtonCheckBox.Visible = currentInputType == DeviceType.Button;
+                if (currentInputType != DeviceType.Button)
+                {
+                    momentaryButtonCheckBox.Checked = true;
+                }
 
                 if (panel != null)
                 {

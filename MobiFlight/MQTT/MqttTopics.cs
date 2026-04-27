@@ -61,6 +61,19 @@ namespace MobiFlight
         public static string AutoFromName(string name) => Auto(name);
 
         /// <summary>
+        /// Returns the topic that hardware-driven input events should be PUBLISHED to.
+        /// Unlike <see cref="ForInput"/> (which yields the topic an MQTT-controller item
+        /// SUBSCRIBES to), publishing always derives from the config <c>Name</c> so that
+        /// the same topic is used regardless of controller type and stays linked to the
+        /// Name when it changes. Returns <c>null</c> when the name is empty.
+        /// </summary>
+        public static string ForInputPublish(InputConfigItem item)
+        {
+            if (item == null) return null;
+            return Auto(item.Name);
+        }
+
+        /// <summary>
         /// Slugifies a config item name into a safe MQTT topic segment. Spaces become
         /// underscores; letters/digits/<c>-</c>/<c>_</c>/<c>/</c> are kept (lower-cased);
         /// everything else is dropped. Returns <c>null</c> if nothing meaningful remains.
